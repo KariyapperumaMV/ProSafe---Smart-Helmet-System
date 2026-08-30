@@ -1,5 +1,0 @@
-Model,Accuracy,Precision,Recall,F1-Score
-XGBoost,0.989,0.989,0.989,0.989
-Random Forest,0.9755,0.9773,0.9755,0.9755
-SVM,0.9255,0.9264,0.9255,0.9258
-Logistic Regression,0.6408,0.6435,0.6408,0.6417

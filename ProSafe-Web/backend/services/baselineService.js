@@ -1,10 +1,16 @@
-const Worker = require("../models/Worker");
+const User = require("../models/User");
+const { USER_ROLES } = require("../constants/roles");
 
 // Stage 7: retrieve the worker's baseline. Never invents a baseline — a
 // worker that exists but has no recorded baseline yet returns
 // hasBaseline: false, which downstream stages must handle explicitly.
+//
+// Reads from User (role: WORKER) — the old standalone Worker model was
+// superseded by the Users module; `workerId` here is the same business key
+// as User.userId, so every other pipeline collection (WorkerProcessingState,
+// HelmetData, Alert, HelmetCommand) needed no changes at all.
 async function getWorkerBaseline(workerId) {
-  const worker = await Worker.findOne({ workerId });
+  const worker = await User.findOne({ userId: workerId, role: USER_ROLES.WORKER });
 
   if (!worker) {
     return { found: false, hasBaseline: false, baselineHeartRate: null, baselineBodyTemperature: null };
@@ -37,21 +43,21 @@ async function getWorkerBaseline(workerId) {
 //   no id left to key HelmetData/WorkerProcessingState on.
 async function resolveWorkerId(helmetId, suppliedWorkerId) {
   if (suppliedWorkerId) {
-    const worker = await Worker.findOne({ workerId: suppliedWorkerId });
+    const worker = await User.findOne({ userId: suppliedWorkerId, role: USER_ROLES.WORKER });
     if (!worker) {
       return { ok: false, reject: false, workerId: suppliedWorkerId, reason: "WORKER_NOT_FOUND" };
     }
     if (worker.helmetId && worker.helmetId !== helmetId) {
       return { ok: false, reject: true, status: 400, reason: "WORKER_HELMET_MISMATCH" };
     }
-    return { ok: true, workerId: worker.workerId };
+    return { ok: true, workerId: worker.userId };
   }
 
-  const worker = await Worker.findOne({ helmetId });
+  const worker = await User.findOne({ helmetId, role: USER_ROLES.WORKER });
   if (!worker) {
     return { ok: false, reject: true, status: 404, reason: "NO_WORKER_ASSIGNED_TO_HELMET" };
   }
-  return { ok: true, workerId: worker.workerId };
+  return { ok: true, workerId: worker.userId };
 }
 
 module.exports = { getWorkerBaseline, resolveWorkerId };

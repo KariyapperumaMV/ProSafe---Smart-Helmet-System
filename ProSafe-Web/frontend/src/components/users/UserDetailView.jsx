@@ -1,17 +1,24 @@
+import { useState } from "react";
 import { UserAvatar } from "../ui/UserAvatar";
 import { RoleBadge, RiskBadge } from "../ui/StatusBadge";
 import { GlassCard } from "../ui/GlassCard";
 import { EmptyState } from "../ui/EmptyState";
 import { SensorCard } from "../ui/SensorCard";
 import { USER_ROLES } from "../../constants/roles";
+import { PersonalizedSensorModal } from "./sensors/PersonalizedSensorModal";
+import { EnvironmentalSensorModal } from "./sensors/EnvironmentalSensorModal";
+import { SafetyPredictionModal } from "./sensors/SafetyPredictionModal";
 
+// `modal` links each live-reading card to the popup it opens (#20) — the
+// same key doubles as the userSensorApi path segment, so SENSOR_DEFS is the
+// one place a sensor's identity is defined.
 const SENSOR_DEFS = [
-  { key: "heartRate", label: "Heart Rate", icon: "❤", unit: "BPM" },
-  { key: "bodyTemp", label: "Body Temperature", icon: "🌡", unit: "°C" },
-  { key: "ambientTemp", label: "Ambient Temp", icon: "🌤", unit: "°C" },
-  { key: "noise", label: "Noise", icon: "🔊", unit: "dB" },
-  { key: "gas", label: "Gas (PPM)", icon: "☁", unit: "ppm" },
-  { key: "uv", label: "UV Light", icon: "☀", unit: "" },
+  { key: "heartRate", label: "Heart Rate", icon: "❤", unit: "BPM", modal: { type: "personalized", sensor: "heartRate" } },
+  { key: "bodyTemp", label: "Body Temperature", icon: "🌡", unit: "°C", modal: { type: "personalized", sensor: "bodyTemperature" } },
+  { key: "ambientTemp", label: "Ambient Temp", icon: "🌤", unit: "°C", modal: { type: "environmental", sensor: "ambientTemperature" } },
+  { key: "noise", label: "Noise", icon: "🔊", unit: "dB", modal: { type: "environmental", sensor: "noise" } },
+  { key: "gas", label: "Gas (PPM)", icon: "☁", unit: "ppm", modal: { type: "environmental", sensor: "gas" } },
+  { key: "uv", label: "UV Light", icon: "☀", unit: "", modal: { type: "environmental", sensor: "uv" } },
 ];
 
 // #14/#16 — worker view shows compact sensor cards (not gauges, per the
@@ -20,6 +27,7 @@ const SENSOR_DEFS = [
 export function UserDetailView({ data, actions }) {
   const { user, currentRiskState, emergencyActive, latestSensorData } = data;
   const isWorker = user.role === USER_ROLES.WORKER;
+  const [activeModal, setActiveModal] = useState(null); // { type, sensor } | { type: "prediction" } | null
 
   return (
     <div className="ps-detail-grid">
@@ -29,13 +37,18 @@ export function UserDetailView({ data, actions }) {
         <RoleBadge role={user.role} />
 
         {isWorker && (
-          <div className="ps-detail-risk">
+          <button
+            type="button"
+            className="ps-detail-risk ps-detail-risk-btn"
+            onClick={() => setActiveModal({ type: "prediction" })}
+            aria-label="View safety prediction history"
+          >
             {emergencyActive ? (
               <span className="ps-badge ps-badge-danger">Emergency Active</span>
             ) : (
               <RiskBadge state={currentRiskState} />
             )}
-          </div>
+          </button>
         )}
 
         <dl className="ps-detail-fields">
@@ -98,6 +111,7 @@ export function UserDetailView({ data, actions }) {
                         unit={def.unit}
                         value={reading?.value ?? reading ?? null}
                         valid={reading?.valid !== false}
+                        onClick={() => setActiveModal(def.modal)}
                       />
                     );
                   })}
@@ -120,6 +134,28 @@ export function UserDetailView({ data, actions }) {
             </>
           )}
         </div>
+      )}
+
+      {isWorker && (
+        <>
+          <PersonalizedSensorModal
+            open={activeModal?.type === "personalized"}
+            onClose={() => setActiveModal(null)}
+            userId={user.userId}
+            sensor={activeModal?.sensor}
+          />
+          <EnvironmentalSensorModal
+            open={activeModal?.type === "environmental"}
+            onClose={() => setActiveModal(null)}
+            userId={user.userId}
+            sensor={activeModal?.sensor}
+          />
+          <SafetyPredictionModal
+            open={activeModal?.type === "prediction"}
+            onClose={() => setActiveModal(null)}
+            userId={user.userId}
+          />
+        </>
       )}
     </div>
   );

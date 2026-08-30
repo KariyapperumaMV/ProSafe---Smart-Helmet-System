@@ -1,4 +1,5 @@
 const jwt = require("jsonwebtoken");
+const { USER_ROLES } = require("../constants/roles");
 
 // Populates req.user = { id, role } from a Bearer token. Every /api/users*
 // and /api/helmets* route sits behind this — RBAC is enforced here and in
@@ -29,4 +30,20 @@ function requireRole(...roles) {
   };
 }
 
-module.exports = { verifyToken, requireRole };
+// ADMIN may target any user id; WORKER may only target their own — used by
+// the sensor-history routes so the frontend calls the same /:id endpoints
+// whether it's an admin viewing a worker or a worker viewing themselves,
+// instead of duplicating a parallel /me/... route tree.
+function requireSelfOrAdmin(paramName = "id") {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+    if (req.user.role === USER_ROLES.ADMIN || req.user.id === req.params[paramName]) {
+      return next();
+    }
+    return res.status(403).json({ message: "You do not have permission to view this user's data" });
+  };
+}
+
+module.exports = { verifyToken, requireRole, requireSelfOrAdmin };

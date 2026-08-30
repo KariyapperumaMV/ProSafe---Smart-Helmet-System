@@ -7,6 +7,13 @@ import { createPortal } from "react-dom";
 export function Modal({ open, onClose, title, children, width = 480 }) {
   const dialogRef = useRef(null);
   const previouslyFocused = useRef(null);
+  // Read fresh on every render (no effect dependency) — most callers pass an
+  // inline onClose, which would otherwise be a new reference on every
+  // re-render. Depending on it directly in the effect below made the
+  // mount/focus effect re-fire on every keystroke typed into a modal's own
+  // input, stealing focus back to the dialog wrapper after each character.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!open) return;
@@ -14,14 +21,14 @@ export function Modal({ open, onClose, title, children, width = 480 }) {
     dialogRef.current?.focus();
 
     function handleKeyDown(e) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") onCloseRef.current();
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
       previouslyFocused.current?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 

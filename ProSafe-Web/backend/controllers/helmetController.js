@@ -1,52 +1,62 @@
-const Helmet = require("../models/Helmet");
-const User = require("../models/User");
+const helmetService = require("../services/helmetService");
 
-// GET /api/helmets/assignable — ADMIN only. Backs the Add/Edit User helmet
-// dropdown (#8) so it never hardcodes ids. `currentHelmetId` lets the Edit
-// User form include the helmet already held by the user being edited, even
-// though it's technically "assigned" (to that same user).
-exports.getAssignableHelmets = async (req, res, next) => {
+function respond(res, result) {
+  if (!result.ok) {
+    return res.status(result.status).json({ message: result.message });
+  }
+  return res.status(result.status).json(result.body);
+}
+
+// GET /api/helmets — ADMIN only
+exports.listHelmets = async (req, res, next) => {
   try {
-    const { currentHelmetId } = req.query;
-
-    const assignedIds = await User.find({ active: true, helmetId: { $ne: null } }).distinct("helmetId");
-    const excluded = currentHelmetId
-      ? assignedIds.filter((id) => id !== currentHelmetId)
-      : assignedIds;
-
-    const helmets = await Helmet.find({
-      status: "ACTIVE",
-      helmetId: { $nin: excluded },
-    }).sort({ helmetId: 1 });
-
-    res.status(200).json({ helmets });
+    const { page, limit, search, assignment, status } = req.query;
+    const result = await helmetService.listHelmets({ page, limit, search, assignment, status });
+    res.status(200).json(result);
   } catch (err) {
     next(err);
   }
 };
 
-// POST /api/helmets — ADMIN only. Minimal registration into the roster so
-// the dropdown above has something to return. Full helmet management
-// (Figures 17-20) is a separate future phase — no frontend page calls this
-// yet.
-exports.registerHelmet = async (req, res, next) => {
+// GET /api/helmets/:helmetId — ADMIN only
+exports.getHelmetDetails = async (req, res, next) => {
   try {
-    const { helmetId } = req.body;
-    if (!helmetId || typeof helmetId !== "string" || !helmetId.trim()) {
-      return res.status(400).json({ message: "helmetId is required" });
-    }
+    const result = await helmetService.getHelmetDetails(req.params.helmetId);
+    respond(res, result);
+  } catch (err) {
+    next(err);
+  }
+};
 
-    const existing = await Helmet.findOne({ helmetId });
-    if (existing) {
-      return res.status(409).json({ message: "Helmet already exists" });
-    }
-
-    const helmet = await Helmet.create({ helmetId: helmetId.trim() });
-    res.status(201).json({ helmet });
+// POST /api/helmets — ADMIN only
+exports.createHelmet = async (req, res, next) => {
+  try {
+    const result = await helmetService.createHelmet({ helmetId: req.body.helmetId });
+    respond(res, result);
   } catch (err) {
     if (err.code === 11000) {
-      return res.status(409).json({ message: "Helmet already exists" });
+      return res.status(409).json({ message: "Helmet ID already exists" });
     }
+    next(err);
+  }
+};
+
+// DELETE /api/helmets/:helmetId — ADMIN only
+exports.deleteHelmet = async (req, res, next) => {
+  try {
+    const result = await helmetService.deleteHelmet(req.params.helmetId);
+    respond(res, result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+// GET /api/helmets/assignable — ADMIN only
+exports.getAssignableHelmets = async (req, res, next) => {
+  try {
+    const helmets = await helmetService.getAssignableHelmets(req.query.currentHelmetId);
+    res.status(200).json({ helmets });
+  } catch (err) {
     next(err);
   }
 };

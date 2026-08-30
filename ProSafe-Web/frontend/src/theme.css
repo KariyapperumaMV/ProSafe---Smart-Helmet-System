@@ -1316,6 +1316,47 @@ button {
   }
 }
 
+/* ---------- Helmets ---------- */
+.ps-helmet-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  background: linear-gradient(135deg, var(--ps-green-soft), rgba(45, 212, 191, 0.14));
+  border: 1px solid var(--ps-border-strong);
+  flex-shrink: 0;
+}
+.ps-helmet-detail-id {
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.ps-online-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+.ps-online-dot .ps-status-dot {
+  width: 9px;
+  height: 9px;
+}
+.ps-online-dot.is-online .ps-status-dot {
+  background: var(--ps-green);
+  box-shadow: 0 0 8px var(--ps-green);
+}
+.ps-online-dot.is-offline .ps-status-dot {
+  background: var(--ps-text-faint);
+  box-shadow: none;
+}
+.ps-online-dot.is-offline {
+  color: var(--ps-text-muted);
+}
+
 /* ---------- Focus visibility (a11y) ---------- */
 a:focus-visible,
 button:focus-visible,

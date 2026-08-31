@@ -80,7 +80,7 @@ exports.listUsers = async (req, res, next) => {
       const regex = new RegExp(search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
       filter.$or = [{ name: regex }, { email: regex }, { userId: regex }, { nic: regex }];
     }
-
+hi
     const [users, total] = await Promise.all([
       User.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit),
       User.countDocuments(filter),

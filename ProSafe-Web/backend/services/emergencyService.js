@@ -163,14 +163,19 @@ async function acknowledgeReset(helmetId) {
     return { ok: true, alreadyCleared: true, workerId: resolution.workerId };
   }
 
+  const resolvedAt = new Date();
   state.emergencyActive = false;
   state.resetRequested = false;
-  state.emergencyEndedAt = new Date();
+  state.emergencyEndedAt = resolvedAt;
   await state.save();
 
+  // resolvedAt is only ever written here — genuine helmet-confirmed
+  // resolution, gated above so a duplicate/stale ACK never reaches this line
+  // (state.emergencyActive is already false by then, alreadyCleared:true is
+  // returned instead) and can never rewrite a historical resolution time.
   await Alert.updateMany(
     { workerId: resolution.workerId, type: "EMERGENCY", resolved: false },
-    { resolved: true, acknowledged: true }
+    { resolved: true, acknowledged: true, resolvedAt }
   );
 
   console.log(`Emergency cleared for worker ${resolution.workerId} (helmet ${helmetId})`);

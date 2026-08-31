@@ -38,6 +38,13 @@ const alertSchema = new mongoose.Schema({
   acknowledgedAt: { type: Date, default: null },
   acknowledgedBy: { type: String, default: null },
   resolved: { type: Boolean, default: false },
+  // Set only when the emergency is genuinely confirmed resolved (the helmet's
+  // ACK, see emergencyService.acknowledgeReset) — never on a mere reset
+  // *request*, and never rewritten by a later duplicate/stale ACK. Historical
+  // rows created before this field existed have resolved:true with
+  // resolvedAt:null forever — Analytics must treat that as "no data" for
+  // resolution-time averages, not backfill a guess (see analyticsService).
+  resolvedAt: { type: Date, default: null },
 }, { timestamps: true });
 
 alertSchema.index({ workerId: 1, timestamp: -1 });

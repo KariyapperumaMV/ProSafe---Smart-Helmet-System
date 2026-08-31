@@ -13,6 +13,7 @@ import { UserViewPage } from "./pages/users/UserViewPage";
 import { AddUserPage } from "./pages/users/AddUserPage";
 import { EditUserPage } from "./pages/users/EditUserPage";
 import { HelmetListPage } from "./pages/helmets/HelmetListPage";
+import { AnalyticsPage } from "./pages/analytics/AnalyticsPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { USER_ROLES } from "./constants/roles";
 
@@ -43,7 +44,7 @@ export default function App() {
                     <Route path="/users/:id" element={<UserViewPage />} />
                     <Route path="/users/:id/edit" element={<EditUserPage />} />
                     <Route path="/helmets" element={<HelmetListPage />} />
-                    <Route path="/analytics" element={<PlaceholderPage title="Analytics" />} />
+                    <Route path="/analytics" element={<AnalyticsPage />} />
                   </Route>
                 </Route>
               </Route>

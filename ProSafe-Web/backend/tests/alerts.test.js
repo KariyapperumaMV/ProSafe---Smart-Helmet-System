@@ -254,6 +254,73 @@ describe("Alert.resetRequested — emergency interim state", () => {
   });
 });
 
+describe("Alert.resolvedAt — emergency resolution timestamp (Analytics #1/#39)", () => {
+  function isoNow() {
+    return new Date().toISOString();
+  }
+
+  test("activating an emergency and requesting a reset never sets resolvedAt", async () => {
+    const admin = await createUser({ role: "ADMIN" });
+    await createUser({ role: "WORKER", helmetId: "PS-H-RESOLVEDAT-1" });
+
+    await request(app)
+      .post("/api/helmet/emergency")
+      .send({ helmetId: "PS-H-RESOLVEDAT-1", timestamp: isoNow(), emergency: true });
+    await request(app).post("/api/helmet/PS-H-RESOLVEDAT-1/emergency/reset").set(authHeader(admin));
+
+    const alert = await Alert.findOne({ helmetId: "PS-H-RESOLVEDAT-1", type: "EMERGENCY" });
+    expect(alert.resolved).toBe(false);
+    expect(alert.resolvedAt).toBeNull();
+  });
+
+  test("the helmet's ACK sets resolved=true and populates resolvedAt", async () => {
+    const admin = await createUser({ role: "ADMIN" });
+    await createUser({ role: "WORKER", helmetId: "PS-H-RESOLVEDAT-2" });
+
+    await request(app)
+      .post("/api/helmet/emergency")
+      .send({ helmetId: "PS-H-RESOLVEDAT-2", timestamp: isoNow(), emergency: true });
+    await request(app).post("/api/helmet/PS-H-RESOLVEDAT-2/emergency/reset").set(authHeader(admin));
+    const before = new Date();
+    await request(app).post("/api/helmet/PS-H-RESOLVEDAT-2/emergency/reset/ack");
+
+    const alert = await Alert.findOne({ helmetId: "PS-H-RESOLVEDAT-2", type: "EMERGENCY" });
+    expect(alert.resolved).toBe(true);
+    expect(alert.resolvedAt).not.toBeNull();
+    expect(alert.resolvedAt.getTime()).toBeGreaterThanOrEqual(before.getTime() - 1000);
+  });
+
+  test("a duplicate/stale ACK never rewrites the historical resolvedAt", async () => {
+    const admin = await createUser({ role: "ADMIN" });
+    await createUser({ role: "WORKER", helmetId: "PS-H-RESOLVEDAT-3" });
+
+    await request(app)
+      .post("/api/helmet/emergency")
+      .send({ helmetId: "PS-H-RESOLVEDAT-3", timestamp: isoNow(), emergency: true });
+    await request(app).post("/api/helmet/PS-H-RESOLVEDAT-3/emergency/reset").set(authHeader(admin));
+    await request(app).post("/api/helmet/PS-H-RESOLVEDAT-3/emergency/reset/ack");
+
+    const firstResolvedAt = (await Alert.findOne({ helmetId: "PS-H-RESOLVEDAT-3", type: "EMERGENCY" })).resolvedAt;
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    await request(app).post("/api/helmet/PS-H-RESOLVEDAT-3/emergency/reset/ack"); // stale retry
+
+    const secondResolvedAt = (await Alert.findOne({ helmetId: "PS-H-RESOLVEDAT-3", type: "EMERGENCY" })).resolvedAt;
+    expect(secondResolvedAt.getTime()).toBe(firstResolvedAt.getTime());
+  });
+
+  test("a historical alert with resolved=true and resolvedAt=null (pre-existing data) remains valid", async () => {
+    const admin = await createUser({ role: "ADMIN" });
+    const legacy = await makeAlert({ type: "EMERGENCY", previousRiskState: null, currentRiskState: null, resolved: true });
+    expect(legacy.resolvedAt).toBeNull();
+
+    const res = await request(app).get("/api/alerts").set(authHeader(admin));
+    const found = res.body.alerts.find((a) => a.id === String(legacy._id));
+    expect(found.resolved).toBe(true);
+    expect(found.resolvedAt).toBeNull();
+  });
+});
+
 describe("Orphaned historical alerts (#30)", () => {
   test("an alert whose User has since been removed is not deleted and still uses the workerId fallback", async () => {
     const admin = await createUser({ role: "ADMIN" });

@@ -26,6 +26,11 @@ module.exports = {
   siteLatitude: process.env.SITE_LATITUDE !== undefined ? Number(process.env.SITE_LATITUDE) : null,
   siteLongitude: process.env.SITE_LONGITUDE !== undefined ? Number(process.env.SITE_LONGITUDE) : null,
   siteTimezone: process.env.SITE_TIMEZONE || "Asia/Colombo",
+  // Human-readable site identity for report headers — deliberately separate
+  // from the lat/lon pair above (a PDF report shouldn't lead with raw
+  // coordinates as the site's "name"). Development placeholder until a real
+  // site is configured.
+  siteName: process.env.SITE_NAME || "ProSafe Construction Site",
 
   // A worker's GPS only counts as "currently reporting location" (dashboard
   // location summary) if their latest packet is within this many seconds —

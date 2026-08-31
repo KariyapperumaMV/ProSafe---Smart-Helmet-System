@@ -43,5 +43,9 @@ const helmetDataSchema = new mongoose.Schema({
 
 helmetDataSchema.index({ workerId: 1, timestamp: -1 });
 helmetDataSchema.index({ helmetId: 1, timestamp: -1 });
+// Admin-wide (no workerId/helmetId filter) date-range aggregations — same
+// reasoning as Alert's {timestamp:-1} index. Analytics scans every worker's
+// packets within a period, which neither index above covers efficiently.
+helmetDataSchema.index({ timestamp: -1 });
 
 module.exports = mongoose.model("HelmetData", helmetDataSchema);

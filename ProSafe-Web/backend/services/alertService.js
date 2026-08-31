@@ -66,6 +66,7 @@ async function shapeAlerts(alerts) {
     acknowledgedAt: alert.acknowledgedAt || null,
     acknowledgedBy: alert.acknowledgedBy || null,
     resolved: alert.resolved,
+    resolvedAt: alert.resolvedAt || null,
     resetRequested:
       alert.type === "EMERGENCY" && !alert.resolved ? Boolean(resetRequestedMap.get(alert.workerId)) : false,
     // A factual label, not a fabricated cause — Alert has no free-text

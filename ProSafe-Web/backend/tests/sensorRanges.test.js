@@ -85,3 +85,30 @@ describe("getRangeMetadata", () => {
     expect(meta.displayRanges.critical.label).toBe("≥ 85 dB");
   });
 });
+
+describe("getMongoClassifyExpr (used by analyticsService — same thresholds as classify())", () => {
+  test("returns a well-formed $switch expression for each known sensor", () => {
+    for (const key of ["noise", "gas", "uv", "ambientTemperature"]) {
+      const expr = sensorRanges.getMongoClassifyExpr(key, "$raw." + key);
+      expect(expr).toHaveProperty("$switch.branches");
+      expect(expr.$switch.branches).toHaveLength(2);
+      expect(expr.$switch.default).toBe("CRITICAL");
+    }
+  });
+
+  test("returns null for an unknown sensor key", () => {
+    expect(sensorRanges.getMongoClassifyExpr("notASensor", "$raw.notASensor")).toBeNull();
+  });
+
+  test("noise's WARNING branch uses $lt (85 itself is NOT warning), matching classifyNoise", () => {
+    const expr = sensorRanges.getMongoClassifyExpr("noise", "$raw.noise");
+    const warningBranch = expr.$switch.branches[1];
+    expect(warningBranch.case).toEqual({ $lt: ["$raw.noise", 85] });
+  });
+
+  test("ambientTemperature's WARNING branch uses $lte (35 itself IS warning), matching classifyAmbientTemperature", () => {
+    const expr = sensorRanges.getMongoClassifyExpr("ambientTemperature", "$raw.ambientTemp");
+    const warningBranch = expr.$switch.branches[1];
+    expect(warningBranch.case).toEqual({ $lte: ["$raw.ambientTemp", 35] });
+  });
+});

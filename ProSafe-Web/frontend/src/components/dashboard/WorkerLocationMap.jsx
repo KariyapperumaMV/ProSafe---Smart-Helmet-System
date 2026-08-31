@@ -39,21 +39,20 @@ function FitToLocations({ locations }) {
 // valid GPS fix (the backend excludes everyone else, never fabricates a
 // fallback coordinate). Offline pins are worded "last known location," never
 // implying the worker is physically there right now.
-export function WorkerLocationMap({ locations }) {
+export function WorkerLocationMap({
+  locations,
+  compact = false,
+  emptyTitle = "No worker locations yet",
+  emptyDescription = "A pin appears here once a worker's helmet reports a valid GPS reading.",
+}) {
   const list = locations || [];
 
   if (!list.length) {
-    return (
-      <EmptyState
-        icon="📍"
-        title="No worker locations yet"
-        description="A pin appears here once a worker's helmet reports a valid GPS reading."
-      />
-    );
+    return <EmptyState icon="📍" title={emptyTitle} description={emptyDescription} />;
   }
 
   return (
-    <div className="ps-map-container">
+    <div className={compact ? "ps-map-container is-compact" : "ps-map-container"}>
       <MapContainer
         center={[list[0].lat, list[0].lon]}
         zoom={13}

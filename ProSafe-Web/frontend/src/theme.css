@@ -1287,13 +1287,172 @@ button {
 .ps-detail-actions .ps-btn {
   flex: 1;
 }
+/* Desktop: Sensor Readings | Location side by side, Current Condition &
+   Guidance spanning the full width below (approved layout, Decision 14). */
 .ps-detail-worker-col {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  grid-template-areas:
+    "sensors location"
+    "guidance guidance";
   gap: var(--ps-space-4);
 }
 .ps-detail-worker-col .ps-card {
   padding: var(--ps-space-5);
+}
+.ps-detail-worker-col .ps-sensor-readings-card {
+  grid-area: sensors;
+}
+.ps-detail-worker-col .ps-location-card {
+  grid-area: location;
+}
+.ps-detail-worker-col .ps-guidance-card {
+  grid-area: guidance;
+}
+
+/* Tablet: stack sensors above location (avoids a cramped 3-col sensor
+   grid at this width) — Guidance stays last. */
+@media (max-width: 1024px) {
+  .ps-detail-worker-col {
+    grid-template-columns: 1fr;
+    grid-template-areas: "sensors" "location" "guidance";
+  }
+}
+
+/* Mobile: Guidance moves ahead of the detailed readings — safety status
+   before detail, per Decision 14. */
+@media (max-width: 640px) {
+  .ps-detail-worker-col {
+    grid-template-areas: "guidance" "sensors" "location";
+  }
+}
+
+/* Scoped to the User View's own sensor grid only — deliberately not the
+   bare .ps-sensor-grid class, which LatestSensorsCard/AlertDetailModal
+   (dashboard) also use with their own auto-fill layout. */
+.ps-detail-worker-col .ps-sensor-grid {
+  grid-template-columns: repeat(3, 1fr);
+}
+@media (max-width: 1024px) {
+  .ps-detail-worker-col .ps-sensor-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 430px) {
+  .ps-detail-worker-col .ps-sensor-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Compact single-worker location card (User View) ---------- */
+.ps-location-card.is-compact {
+  display: flex;
+  flex-direction: column;
+}
+.ps-map-container.is-compact {
+  height: 190px;
+  margin-top: var(--ps-space-3);
+}
+.ps-location-compact-footer {
+  margin-top: var(--ps-space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ps-location-compact-footer .ps-detail-timestamp {
+  margin: 0;
+}
+.ps-location-compact-footer .ps-map-link {
+  margin-top: 4px;
+}
+
+/* ---------- Current Condition & Guidance card ---------- */
+.ps-guidance-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ps-space-3);
+  margin-bottom: var(--ps-space-3);
+}
+.ps-guidance-header .ps-detail-section-title {
+  margin: 0;
+}
+.ps-guidance-summary-title {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+.ps-guidance-summary-desc {
+  margin: 0 0 var(--ps-space-3);
+  font-size: 0.86rem;
+  color: var(--ps-text-muted);
+}
+.ps-guidance-section {
+  margin-top: var(--ps-space-4);
+}
+.ps-guidance-section-label {
+  margin: 0 0 var(--ps-space-2, 8px);
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--ps-text-faint);
+}
+.ps-guidance-factors {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ps-guidance-factor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--ps-radius-sm);
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 3px solid var(--ps-border-strong);
+  font-size: 0.84rem;
+}
+.ps-guidance-factor.is-critical {
+  border-left-color: var(--ps-critical);
+}
+.ps-guidance-factor.is-warning {
+  border-left-color: var(--ps-warning);
+}
+.ps-guidance-factor.is-info {
+  border-left-color: var(--ps-border-strong);
+}
+.ps-guidance-factor-label {
+  font-weight: 700;
+}
+.ps-guidance-factor-value {
+  color: var(--ps-text-muted);
+}
+.ps-guidance-factor-severity {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--ps-text-faint);
+}
+.ps-guidance-factor-detail {
+  flex-basis: 100%;
+  color: var(--ps-text-muted);
+  font-size: 0.8rem;
+}
+.ps-guidance-actions {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ps-guidance-action {
+  font-size: 0.86rem;
 }
 .ps-detail-section-title {
   margin: 0 0 4px;

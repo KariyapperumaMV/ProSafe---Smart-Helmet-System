@@ -19,6 +19,7 @@ const {
   getAmbientTemperature,
   getSafetyPredictions,
 } = require("../controllers/userSensorController");
+const { getSafetyGuidance } = require("../controllers/safetyGuidanceController");
 const { verifyToken, requireRole, requireSelfOrAdmin } = require("../middleware/authMiddleware");
 const { uploadProfileImage } = require("../middleware/upload");
 const { USER_ROLES } = require("../constants/roles");
@@ -49,5 +50,6 @@ router.get("/:id/sensors/gas", selfOrAdmin, getGas);
 router.get("/:id/sensors/uv", selfOrAdmin, getUv);
 router.get("/:id/sensors/ambient-temperature", selfOrAdmin, getAmbientTemperature);
 router.get("/:id/safety-predictions", selfOrAdmin, getSafetyPredictions);
+router.get("/:id/safety-guidance", selfOrAdmin, getSafetyGuidance);
 
 module.exports = router;

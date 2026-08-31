@@ -8,6 +8,8 @@ import { USER_ROLES } from "../../constants/roles";
 import { PersonalizedSensorModal } from "./sensors/PersonalizedSensorModal";
 import { EnvironmentalSensorModal } from "./sensors/EnvironmentalSensorModal";
 import { SafetyPredictionModal } from "./sensors/SafetyPredictionModal";
+import { WorkerLocationCompactCard } from "./WorkerLocationCompactCard";
+import { CurrentConditionCard } from "./CurrentConditionCard";
 
 // `modal` links each live-reading card to the popup it opens (#20) — the
 // same key doubles as the userSensorApi path segment, so SENSOR_DEFS is the
@@ -25,7 +27,7 @@ const SENSOR_DEFS = [
 // doc's own note) plus current risk state, only when a helmet is assigned
 // and the pipeline has produced data. Admin view never shows any of this.
 export function UserDetailView({ data, actions }) {
-  const { user, currentRiskState, emergencyActive, latestSensorData } = data;
+  const { user, currentRiskState, emergencyActive, latestSensorData, online, lastSeenAt, location } = data;
   const isWorker = user.role === USER_ROLES.WORKER;
   const [activeModal, setActiveModal] = useState(null); // { type, sensor } | { type: "prediction" } | null
 
@@ -86,19 +88,20 @@ export function UserDetailView({ data, actions }) {
       {isWorker && (
         <div className="ps-detail-worker-col">
           {!user.helmetId ? (
-            <GlassCard>
+            <GlassCard className="ps-sensor-readings-card">
               <EmptyState icon="⛑" title="No helmet assigned" description="Sensor and safety data will appear once a helmet is assigned." />
             </GlassCard>
           ) : !latestSensorData ? (
-            <GlassCard>
+            <GlassCard className="ps-sensor-readings-card">
               <EmptyState icon="📡" title="Helmet offline" description="No sensor readings have been received yet." />
             </GlassCard>
           ) : (
             <>
-              <GlassCard>
+              <GlassCard className="ps-sensor-readings-card">
                 <h3 className="ps-detail-section-title">Sensor Readings</h3>
                 <p className="ps-detail-timestamp">
-                  Last updated {new Date(latestSensorData.timestamp).toLocaleString()}
+                  {online === false ? "Last known readings" : "Current readings"} · Last updated{" "}
+                  {new Date(latestSensorData.timestamp).toLocaleString()}
                 </p>
                 <div className="ps-sensor-grid">
                   {SENSOR_DEFS.map((def) => {
@@ -118,21 +121,23 @@ export function UserDetailView({ data, actions }) {
                 </div>
               </GlassCard>
 
-              {latestSensorData.sensors?.gps?.lat && (
-                <GlassCard>
-                  <h3 className="ps-detail-section-title">Location</h3>
-                  <a
-                    href={`https://www.google.com/maps?q=${latestSensorData.sensors.gps.lat},${latestSensorData.sensors.gps.lon}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="ps-map-link"
-                  >
-                    Open in Google Maps ↗
-                  </a>
-                </GlassCard>
-              )}
+              <WorkerLocationCompactCard
+                userId={user.userId}
+                workerName={user.name}
+                helmetId={user.helmetId}
+                online={online}
+                lastSeenAt={lastSeenAt}
+                location={location}
+              />
             </>
           )}
+
+          {/* Guidance always mounts for a worker, independent of whether a
+              helmet/packet exists — the backend's own NO_HELMET/NO_DATA
+              responses handle those states declaratively (backend is the
+              source of truth), rather than being swallowed by the empty
+              states above. */}
+          <CurrentConditionCard userId={user.userId} />
         </div>
       )}
 

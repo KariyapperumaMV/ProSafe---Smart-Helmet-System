@@ -5,6 +5,8 @@ const HelmetData = require("../models/HelmetData");
 const { USER_ROLES } = require("../constants/roles");
 const userService = require("../services/userService");
 const notificationService = require("../services/notificationService");
+const helmetService = require("../services/helmetService");
+const dashboardService = require("../services/dashboardService");
 
 const PROFILE_IMAGE_BASE = "/uploads/profile-images";
 
@@ -30,15 +32,25 @@ async function buildWorkerOperationalData(user) {
     return null;
   }
 
-  const [state, latestData] = await Promise.all([
+  const [state, latestData, lastSeenMap, locationMap] = await Promise.all([
     WorkerProcessingState.findOne({ workerId: user.userId }),
     HelmetData.findOne({ workerId: user.userId }).sort({ timestamp: -1 }),
+    helmetService.getLastSeenMap([user.helmetId]),
+    // "Latest packet WITH valid GPS" — deliberately reused from
+    // dashboardService rather than trusting latestData's own GPS, which
+    // may be absent even when an earlier packet had a genuine fix.
+    dashboardService.getLastValidLocationMap([user.helmetId]),
   ]);
+
+  const lastSeenAt = lastSeenMap.get(user.helmetId) || null;
 
   return {
     helmet: { helmetId: user.helmetId },
     currentRiskState: state ? state.currentRiskState : null,
     emergencyActive: state ? state.emergencyActive : false,
+    online: helmetService.isRecentEnoughToBeOnline(lastSeenAt),
+    lastSeenAt,
+    location: locationMap.get(user.helmetId) || null,
     latestSensorData: latestData
       ? { timestamp: latestData.timestamp, sensors: latestData.raw, prediction: latestData.prediction }
       : null,

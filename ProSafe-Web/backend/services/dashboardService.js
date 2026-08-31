@@ -282,4 +282,9 @@ module.exports = {
   getAlertsTodayCount,
   getRecentAlerts,
   getWorkerLocationMap,
+  // Exported so userController's single-worker detail view can reuse the
+  // exact same "latest packet WITH valid GPS" aggregation for one helmetId
+  // (the compact Location card) instead of duplicating it or going through
+  // getWorkerLocationMap's all-workers scan.
+  getLastValidLocationMap,
 };

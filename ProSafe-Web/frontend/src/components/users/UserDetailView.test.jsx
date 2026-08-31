@@ -17,6 +17,16 @@ vi.mock("./sensors/EnvironmentalSensorModal", () => ({
 vi.mock("./sensors/SafetyPredictionModal", () => ({
   SafetyPredictionModal: ({ open, userId }) => (open ? <div data-testid="prediction-modal">{userId}</div> : null),
 }));
+// The guidance card polls a live endpoint and the location card renders a
+// Leaflet map — neither is relevant to "which modal opens on which click"
+// (this file's concern), so both are shallow-mocked, same approach as the
+// three sensor modals above.
+vi.mock("./CurrentConditionCard", () => ({
+  CurrentConditionCard: ({ userId }) => <div data-testid="guidance-card">{userId}</div>,
+}));
+vi.mock("./WorkerLocationCompactCard", () => ({
+  WorkerLocationCompactCard: ({ userId }) => <div data-testid="location-card">{userId}</div>,
+}));
 
 const workerData = {
   user: {
@@ -86,5 +96,49 @@ describe("UserDetailView — sensor cards open the correct modal", () => {
     render(<UserDetailView data={adminData} />);
     expect(screen.queryByRole("button", { name: /heart rate/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /view safety prediction history/i })).not.toBeInTheDocument();
+  });
+});
+
+describe("UserDetailView — sensor readings, location, and guidance layout", () => {
+  test("all 6 sensor cards render inside the Sensor Readings card and remain clickable", () => {
+    render(<UserDetailView data={workerData} />);
+    for (const name of [/heart rate/i, /body temperature/i, /ambient temp/i, /noise/i, /gas/i, /uv light/i]) {
+      expect(screen.getByRole("button", { name })).toBeInTheDocument();
+    }
+  });
+
+  test("the compact location card and the guidance card both render for a worker with a helmet", () => {
+    render(<UserDetailView data={workerData} />);
+    expect(screen.getByTestId("location-card")).toHaveTextContent("W-042");
+    expect(screen.getByTestId("guidance-card")).toHaveTextContent("W-042");
+  });
+
+  test("readings label reflects online/offline state", () => {
+    const offlineData = { ...workerData, online: false };
+    render(<UserDetailView data={offlineData} />);
+    expect(screen.getByText(/Last known readings/)).toBeInTheDocument();
+  });
+
+  test("neither location nor guidance card renders for an ADMIN user", () => {
+    const adminData = { ...workerData, user: { ...workerData.user, role: "ADMIN", helmetId: null } };
+    render(<UserDetailView data={adminData} />);
+    expect(screen.queryByTestId("location-card")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("guidance-card")).not.toBeInTheDocument();
+  });
+
+  test("guidance card still mounts for a WORKER with no helmet — backend's NO_HELMET copy is the source of truth, not swallowed by a page-level empty state", () => {
+    const noHelmetData = { ...workerData, user: { ...workerData.user, helmetId: null }, latestSensorData: null, currentRiskState: null };
+    render(<UserDetailView data={noHelmetData} />);
+    expect(screen.getByText("No helmet assigned")).toBeInTheDocument(); // page-level empty state
+    expect(screen.getByTestId("guidance-card")).toHaveTextContent("W-042"); // guidance still mounts
+    expect(screen.queryByTestId("location-card")).not.toBeInTheDocument(); // nothing to show without a helmet
+  });
+
+  test("guidance card still mounts for a WORKER whose helmet has never sent a packet", () => {
+    const noDataData = { ...workerData, latestSensorData: null };
+    render(<UserDetailView data={noDataData} />);
+    expect(screen.getByText("Helmet offline")).toBeInTheDocument();
+    expect(screen.getByTestId("guidance-card")).toHaveTextContent("W-042");
+    expect(screen.queryByTestId("location-card")).not.toBeInTheDocument();
   });
 });

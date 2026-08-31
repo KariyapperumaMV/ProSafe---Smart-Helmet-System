@@ -32,3 +32,15 @@ export const getGasHistory = (userId) => cachedGet(`/users/${userId}/sensors/gas
 export const getUvHistory = (userId) => cachedGet(`/users/${userId}/sensors/uv`);
 export const getAmbientTemperatureHistory = (userId) => cachedGet(`/users/${userId}/sensors/ambient-temperature`);
 export const getSafetyPredictionHistory = (userId) => cachedGet(`/users/${userId}/safety-predictions`);
+
+// Deliberately bypasses `cachedGet` — the Current Condition card polls this
+// every 60s itself (see CurrentConditionCard.jsx), so a second layer of
+// 60s caching here would only add a race against the poll for no benefit.
+export async function getSafetyGuidance(userId) {
+  try {
+    const { data } = await apiClient.get(`/users/${userId}/safety-guidance`);
+    return data;
+  } catch (err) {
+    throw normalizeApiError(err);
+  }
+}

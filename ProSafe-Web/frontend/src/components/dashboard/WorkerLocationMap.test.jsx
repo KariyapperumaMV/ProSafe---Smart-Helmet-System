@@ -81,4 +81,26 @@ describe("WorkerLocationMap", () => {
     expect(screen.getByText("Nirmani Silva")).toBeInTheDocument();
     expect(screen.getByText("Helmet PS-H-1")).toBeInTheDocument();
   });
+
+  test("compact prop adds the is-compact class for the smaller User View map height", () => {
+    const { container } = render(<WorkerLocationMap locations={[online]} compact />);
+    expect(container.querySelector(".ps-map-container.is-compact")).toBeInTheDocument();
+  });
+
+  test("no compact prop -> plain .ps-map-container, no is-compact class", () => {
+    const { container } = render(<WorkerLocationMap locations={[online]} />);
+    expect(container.querySelector(".ps-map-container.is-compact")).not.toBeInTheDocument();
+  });
+
+  test("custom empty title/description override the default dashboard wording", () => {
+    render(
+      <WorkerLocationMap
+        locations={[]}
+        emptyTitle="Location unavailable"
+        emptyDescription="No valid GPS location has been received from this helmet."
+      />
+    );
+    expect(screen.getByText("Location unavailable")).toBeInTheDocument();
+    expect(screen.getByText("No valid GPS location has been received from this helmet.")).toBeInTheDocument();
+  });
 });

@@ -1,6 +1,16 @@
 const WorkerProcessingState = require("../models/WorkerProcessingState");
 const Alert = require("../models/Alert");
 const { resolveWorkerId } = require("./baselineService");
+const notificationService = require("./notificationService");
+const User = require("../models/User");
+
+// Best-effort worker display name for notification text — falls back to
+// the bare workerId rather than failing the whole notification if the User
+// lookup comes back empty (never blocks the emergency workflow itself).
+async function workerDisplayName(workerId) {
+  const user = await User.findOne({ userId: workerId }, "name").lean();
+  return user?.name || workerId;
+}
 
 // Emergency is a request for help, not an ML decision — this file never
 // calls baselineService.getWorkerBaseline, deviationService, exposureService,
@@ -62,6 +72,19 @@ async function activateEmergency({ helmetId, workerId: suppliedWorkerId, timesta
   });
 
   console.log(`Emergency activated for worker ${workerId} (helmet ${helmetId})`);
+
+  const name = await workerDisplayName(workerId);
+  // Not the pressing worker themselves — they already know (#11: "worker
+  // already knows they pressed the physical button").
+  await notificationService.notifyAdmins({
+    type: "EMERGENCY_ALERT",
+    title: "Emergency activated",
+    message: `${name} pressed the emergency button.`,
+    relatedEntityType: "ALERT",
+    relatedEntityId: String(alert._id),
+    metadata: { workerId, helmetId },
+  });
+
   return { ok: true, created: true, workerId, alert };
 }
 
@@ -87,6 +110,27 @@ async function requestReset(helmetId) {
   state.resetRequestedAt = new Date();
   await state.save();
   console.log(`Reset requested for worker ${resolution.workerId} (helmet ${helmetId})`);
+
+  const name = await workerDisplayName(resolution.workerId);
+  await Promise.all([
+    notificationService.notifyAdmins({
+      type: "EMERGENCY_RESET_REQUESTED",
+      title: "Emergency reset requested",
+      message: `A reset was requested for ${name}'s emergency. Waiting for the helmet to confirm.`,
+      relatedEntityType: "USER",
+      relatedEntityId: resolution.workerId,
+      metadata: { helmetId },
+    }),
+    notificationService.notifyUser(resolution.workerId, {
+      type: "EMERGENCY_RESET_REQUESTED",
+      title: "Emergency reset requested",
+      message: "A supervisor has requested your emergency status be reset.",
+      relatedEntityType: "USER",
+      relatedEntityId: resolution.workerId,
+      metadata: { helmetId },
+    }),
+  ]);
+
   return { ok: true, alreadyRequested: false, workerId: resolution.workerId };
 }
 
@@ -130,6 +174,27 @@ async function acknowledgeReset(helmetId) {
   );
 
   console.log(`Emergency cleared for worker ${resolution.workerId} (helmet ${helmetId})`);
+
+  const name = await workerDisplayName(resolution.workerId);
+  await Promise.all([
+    notificationService.notifyAdmins({
+      type: "EMERGENCY_RESOLVED",
+      title: "Emergency resolved",
+      message: `${name}'s emergency has been resolved — the helmet confirmed the reset.`,
+      relatedEntityType: "USER",
+      relatedEntityId: resolution.workerId,
+      metadata: { helmetId },
+    }),
+    notificationService.notifyUser(resolution.workerId, {
+      type: "EMERGENCY_RESOLVED",
+      title: "Emergency resolved",
+      message: "Your emergency status has been reset.",
+      relatedEntityType: "USER",
+      relatedEntityId: resolution.workerId,
+      metadata: { helmetId },
+    }),
+  ]);
+
   return { ok: true, alreadyCleared: false, workerId: resolution.workerId };
 }
 

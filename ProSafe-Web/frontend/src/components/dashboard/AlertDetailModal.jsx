@@ -55,9 +55,21 @@ export function AlertDetailModal({ open, onClose, alert }) {
             </div>
           )}
           <div>
-            <dt>Acknowledged</dt>
-            <dd>{alert.acknowledged ? "Yes" : "No"}</dd>
+            <dt>Read (acknowledged)</dt>
+            <dd>
+              {alert.acknowledged
+                ? `Yes${alert.acknowledgedBy ? ` — by ${alert.acknowledgedBy}` : ""}${
+                    alert.acknowledgedAt ? ` (${new Date(alert.acknowledgedAt).toLocaleString()})` : ""
+                  }`
+                : "No"}
+            </dd>
           </div>
+          {alert.type === "EMERGENCY" && !alert.resolved && (
+            <div>
+              <dt>Reset requested</dt>
+              <dd>{alert.resetRequested ? "Yes — waiting for the helmet to confirm" : "No"}</dd>
+            </div>
+          )}
           <div>
             <dt>Resolved</dt>
             <dd>{alert.resolved ? "Yes" : "No"}</dd>

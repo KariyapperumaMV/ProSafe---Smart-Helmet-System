@@ -46,3 +46,15 @@ export async function deleteHelmet(helmetId) {
     throw normalizeApiError(err);
   }
 }
+
+// Supervisor-facing reset request — the physical helmet still has to
+// receive and confirm it before the emergency actually clears (see
+// ResetEmergencyModal). ADMIN-only on the backend.
+export async function requestEmergencyReset(helmetId) {
+  try {
+    const { data } = await apiClient.post(`/helmet/${helmetId}/emergency/reset`);
+    return data;
+  } catch (err) {
+    throw normalizeApiError(err);
+  }
+}

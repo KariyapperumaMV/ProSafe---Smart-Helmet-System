@@ -19,6 +19,8 @@ async function createUser(overrides = {}) {
     phone: overrides.phone || "0771234567",
     role,
     helmetId: overrides.helmetId ?? null,
+    baselineHeartRate: overrides.baselineHeartRate ?? null,
+    baselineBodyTemperature: overrides.baselineBodyTemperature ?? null,
     active: overrides.active ?? true,
   });
 }

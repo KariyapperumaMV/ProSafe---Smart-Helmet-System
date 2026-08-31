@@ -55,7 +55,12 @@ export function WorkerDashboard() {
       </div>
 
       <div className="ps-dashboard-bottom-row ps-dashboard-bottom-row-worker">
-        <RecentAlertsCard title="My Recent Alerts" alerts={data.recentAlerts} emptyMessage="No alerts recorded for you yet." />
+        <RecentAlertsCard
+          title="My Recent Alerts"
+          emptyMessage="No alerts recorded for you yet."
+          readOnly
+          limit={5}
+        />
       </div>
     </div>
   );

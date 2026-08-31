@@ -5,9 +5,10 @@ const Alert = require("../models/Alert");
 const WorkerProcessingState = require("../models/WorkerProcessingState");
 const { USER_ROLES } = require("../constants/roles");
 const { RISK_STATES } = require("../constants/riskStates");
-const { timezone, locationFreshAfterSeconds } = require("../config/appConfig");
+const { timezone, dashboardAlertWindowDays } = require("../config/appConfig");
 const helmetService = require("./helmetService");
 const weatherService = require("./weatherService");
+const alertService = require("./alertService");
 
 const RECENT_ALERTS_LIMIT = 10;
 const WORKER_RECENT_ALERTS_LIMIT = 5;
@@ -95,68 +96,102 @@ async function getAlertsTodayCount() {
   return rows[0]?.count || 0;
 }
 
-// Admin gets every worker's alerts; a worker gets only their own (#17 —
-// enforced here, the one place recentAlerts is built, not just in the
-// route). `workerName` falls back to the raw workerId when no User (active
-// or soft-deleted) matches it at all — a genuinely orphaned historical
-// record, still readable rather than dropped (#11).
+// Admin gets every worker's alerts; a worker gets only their own — enforced
+// inside alertService.listAlerts (the one place this scoping happens, also
+// shared with the standalone GET /api/alerts endpoint). Bounded to the last
+// dashboardAlertWindowDays (7) per the approved plan — the full Alert
+// history is never deleted, only this *view* is time-boxed.
 async function getRecentAlerts({ workerId, limit } = {}) {
-  const filter = workerId ? { workerId } : {};
-  const alerts = await Alert.find(filter).sort({ timestamp: -1 }).limit(limit).lean();
-  if (!alerts.length) return [];
-
-  const referencedIds = [...new Set(alerts.map((a) => a.workerId))];
-  const users = await User.find({ userId: { $in: referencedIds } }, "userId name").lean();
-  const nameMap = new Map(users.map((u) => [u.userId, u.name]));
-
-  return alerts.map((alert) => ({
-    id: String(alert._id),
-    type: alert.type,
-    workerId: alert.workerId,
-    workerName: nameMap.get(alert.workerId) || alert.workerId,
-    helmetId: alert.helmetId,
-    timestamp: alert.timestamp,
-    previousRiskState: alert.previousRiskState,
-    currentRiskState: alert.currentRiskState,
-    confidence: alert.confidence,
-    sensorSnapshot: alert.sensorSnapshot || null,
-    location: alert.location && typeof alert.location.lat === "number" ? alert.location : null,
-    acknowledged: alert.acknowledged,
-    resolved: alert.resolved,
-    // A factual label, not a fabricated cause — Alert has no free-text
-    // "trigger reason" field, only the transition itself or the fact of an
-    // emergency (#10).
-    label:
-      alert.type === "EMERGENCY"
-        ? "Emergency button pressed"
-        : `Risk changed: ${alert.previousRiskState} → ${alert.currentRiskState}`,
-  }));
+  const sinceDate = new Date(Date.now() - dashboardAlertWindowDays * 24 * 60 * 60 * 1000);
+  const { alerts } = await alertService.listAlerts({
+    requesterRole: workerId ? USER_ROLES.WORKER : USER_ROLES.ADMIN,
+    requesterId: workerId,
+    sinceDate,
+    limit,
+  });
+  return alerts;
 }
 
-// A worker counts as "currently reporting location" only if a recent packet
-// (within the same freshness window as helmet online/offline, #15) carried
-// valid GPS — never a fabricated fallback, never a stale multi-day-old fix.
-async function getWorkerLocationSummary() {
-  const workers = await User.find({ role: USER_ROLES.WORKER, active: true }, "userId").lean();
-  const totalWorkers = workers.length;
-  if (!totalWorkers) return { reportingCount: 0, totalWorkers: 0 };
-
-  const workerIds = workers.map((w) => w.userId);
-  const since = new Date(Date.now() - locationFreshAfterSeconds * 1000);
+// Bulk "latest packet WITH genuine valid GPS, per helmet" — deliberately
+// separate from helmetService.getLastSeenMap (which finds the latest packet
+// regardless of GPS presence, used for online/offline). The two can
+// legitimately disagree: a helmet's most recent packet might carry no GPS
+// at all while an earlier one did, and per #23 that earlier valid fix must
+// still be used as the location rather than being discarded.
+async function getLastValidLocationMap(helmetIds) {
+  if (!helmetIds.length) return new Map();
 
   const rows = await HelmetData.aggregate([
     {
       $match: {
-        workerId: { $in: workerIds },
-        timestamp: { $gte: since },
+        helmetId: { $in: helmetIds },
         "raw.gps.lat": { $type: "number" },
         "raw.gps.lon": { $type: "number" },
       },
     },
-    { $group: { _id: "$workerId" } },
+    { $sort: { helmetId: 1, timestamp: -1 } },
+    {
+      $group: {
+        _id: "$helmetId",
+        lat: { $first: "$raw.gps.lat" },
+        lon: { $first: "$raw.gps.lon" },
+        locationTimestamp: { $first: "$timestamp" },
+      },
+    },
   ]);
 
-  return { reportingCount: rows.length, totalWorkers };
+  return new Map(rows.map((row) => [row._id, { lat: row.lat, lon: row.lon, locationTimestamp: row.locationTimestamp }]));
+}
+
+// Map-ready location data — ADMIN dashboard only. Only active WORKER users
+// with an assigned, currently-registered (active) Helmet, and only when a
+// genuine valid GPS fix has ever been recorded for that helmet — no
+// fabricated fallback coordinates, ever (#26/#34).
+async function getWorkerLocationMap() {
+  const workers = await User.find({ role: USER_ROLES.WORKER, active: true, helmetId: { $ne: null } }, "userId name helmetId").lean();
+  if (!workers.length) return [];
+
+  const candidateHelmetIds = [...new Set(workers.map((w) => w.helmetId))];
+  const registeredHelmets = await Helmet.find({ helmetId: { $in: candidateHelmetIds }, active: true }, "helmetId").lean();
+  const registeredSet = new Set(registeredHelmets.map((h) => h.helmetId));
+  const relevantWorkers = workers.filter((w) => registeredSet.has(w.helmetId));
+  if (!relevantWorkers.length) return [];
+
+  const relevantHelmetIds = relevantWorkers.map((w) => w.helmetId);
+  const relevantWorkerIds = relevantWorkers.map((w) => w.userId);
+
+  const [lastSeenMap, lastLocationMap, states] = await Promise.all([
+    helmetService.getLastSeenMap(relevantHelmetIds),
+    getLastValidLocationMap(relevantHelmetIds),
+    WorkerProcessingState.find({ workerId: { $in: relevantWorkerIds } }, "workerId currentRiskState emergencyActive").lean(),
+  ]);
+  const stateMap = new Map(states.map((s) => [s.workerId, s]));
+
+  const locations = [];
+  for (const worker of relevantWorkers) {
+    const location = lastLocationMap.get(worker.helmetId);
+    if (!location) continue; // never sent a valid GPS fix — excluded, not fabricated
+
+    const lastSeenAt = lastSeenMap.get(worker.helmetId) || null;
+    const state = stateMap.get(worker.userId);
+    // Same rule as the worker dashboard's own operationalState (#18/#24) —
+    // emergency always overrides the ML risk state, never defaulted to SAFE.
+    const operationalState = state ? (state.emergencyActive ? "EMERGENCY" : state.currentRiskState || "UNKNOWN") : "UNKNOWN";
+
+    locations.push({
+      userId: worker.userId,
+      workerName: worker.name,
+      helmetId: worker.helmetId,
+      lat: location.lat,
+      lon: location.lon,
+      online: helmetService.isRecentEnoughToBeOnline(lastSeenAt),
+      lastSeenAt,
+      locationTimestamp: location.locationTimestamp,
+      operationalState,
+    });
+  }
+
+  return locations;
 }
 
 // GET /api/dashboard/admin — ADMIN only. One aggregated response instead of
@@ -168,7 +203,7 @@ async function getAdminDashboard() {
     getAlertsTodayCount(),
     getRecentAlerts({ limit: RECENT_ALERTS_LIMIT }),
     weatherService.getWeather(),
-    getWorkerLocationSummary(),
+    getWorkerLocationMap(),
   ]);
 
   return {
@@ -246,5 +281,5 @@ module.exports = {
   getHelmetStatusSummary,
   getAlertsTodayCount,
   getRecentAlerts,
-  getWorkerLocationSummary,
+  getWorkerLocationMap,
 };

@@ -32,10 +32,18 @@ const alertSchema = new mongoose.Schema({
   },
 
   acknowledged: { type: Boolean, default: false },
+  // First-acknowledgement-wins audit trail — set only the first time
+  // acknowledged flips false->true, never overwritten by a later idempotent
+  // call (see alertService.acknowledgeAlert).
+  acknowledgedAt: { type: Date, default: null },
+  acknowledgedBy: { type: String, default: null },
   resolved: { type: Boolean, default: false },
 }, { timestamps: true });
 
 alertSchema.index({ workerId: 1, timestamp: -1 });
 alertSchema.index({ resolved: 1, acknowledged: 1 });
+// Admin-wide (no workerId filter) recent/filtered alert queries — new access
+// pattern introduced by the dashboard's Recent Alerts filtering/pagination.
+alertSchema.index({ timestamp: -1 });
 
 module.exports = mongoose.model("Alert", alertSchema);

@@ -66,8 +66,7 @@ exports.receiveEmergency = async (req, res, next) => {
 // Supervisor-facing: requests that an active emergency be reset. Does not
 // itself clear emergencyActive — the physical helmet still has to receive
 // and acknowledge the reset (see getEmergencyResetStatus / acknowledgeEmergencyReset).
-// TODO: protect with supervisor/admin auth middleware once one exists —
-// no authentication layer is implemented anywhere in this backend yet.
+// ADMIN-only — see routes/helmetDataRoutes.js.
 exports.requestEmergencyReset = async (req, res, next) => {
   try {
     const result = await emergencyService.requestReset(req.params.helmetId);

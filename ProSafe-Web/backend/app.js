@@ -7,6 +7,8 @@ const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const helmetRoutes = require("./routes/helmetRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
+const alertRoutes = require("./routes/alertRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
 const errorHandler = require("./middleware/errorHandler");
 
 const app = express();
@@ -25,7 +27,7 @@ app.use((req, res, next) => {
 // pointed at it.
 app.use(cors({
   origin: ["http://localhost:3000", "http://localhost:5173"],
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
@@ -34,6 +36,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/helmets", helmetRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/alerts", alertRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 app.use(errorHandler);
 

@@ -4,6 +4,7 @@ const WorkerProcessingState = require("../models/WorkerProcessingState");
 const HelmetData = require("../models/HelmetData");
 const { USER_ROLES } = require("../constants/roles");
 const userService = require("../services/userService");
+const notificationService = require("../services/notificationService");
 
 const PROFILE_IMAGE_BASE = "/uploads/profile-images";
 
@@ -135,6 +136,19 @@ exports.createUser = async (req, res, next) => {
       profileImageUrl,
       helmetId: role === USER_ROLES.WORKER ? (helmetId || null) : null,
       createdBy: req.user.id,
+    });
+
+    // Fired only after the User document is actually persisted (#31) — a
+    // notification failure here can never roll back or fail the response,
+    // since notificationService itself never throws (it logs and swallows).
+    await notificationService.notifyAdmins({
+      type: "USER_CREATED",
+      title: "User created",
+      message: `${user.name} was added as ${user.role === USER_ROLES.ADMIN ? "an ADMIN" : "a WORKER"}.`,
+      relatedEntityType: "USER",
+      relatedEntityId: user.userId,
+      metadata: { role: user.role },
+      excludeUserId: req.user.id,
     });
 
     res.status(201).json({ user: userService.toPublicUser(user) });

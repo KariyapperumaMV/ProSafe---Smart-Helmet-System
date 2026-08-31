@@ -33,4 +33,15 @@ module.exports = {
   // rather than inventing a second threshold concept. Defaults to the same
   // value unless explicitly overridden.
   locationFreshAfterSeconds: num(process.env.LOCATION_FRESH_AFTER_SECONDS, num(process.env.HELMET_OFFLINE_AFTER_SECONDS, 180)),
+
+  // Notifications are disposable inbox pointers, not the safety record
+  // itself (Alert is, and is never TTL-deleted — see models/Alert.js and
+  // dashboardService's 7-day *view* filter). 30 days is enough for an admin
+  // to catch up after time away without the inbox growing unbounded.
+  notificationRetentionDays: num(process.env.NOTIFICATION_RETENTION_DAYS, 30),
+
+  // Dashboard "Recent Alerts" only ever shows the last N days — the
+  // underlying Alert collection itself keeps everything, forever, for
+  // future Analytics/reporting.
+  dashboardAlertWindowDays: 7,
 };

@@ -233,23 +233,144 @@ describe("GET /api/dashboard/admin — recent alerts", () => {
   });
 });
 
-describe("GET /api/dashboard/admin — worker location summary", () => {
-  test("only recent valid GPS counts as currently reporting", async () => {
+describe("GET /api/dashboard/admin — worker location map (#22 breaking shape change)", () => {
+  test("only a worker with an assigned, registered helmet and a genuine GPS fix appears", async () => {
     const admin = await createUser({ role: "ADMIN" });
-    const recentWorker = await createUser({ role: "WORKER" });
-    const staleWorker = await createUser({ role: "WORKER" });
-    const noGpsWorker = await createUser({ role: "WORKER" });
+    await Helmet.create({ helmetId: "PS-H-LOC1" });
+    const worker = await createUser({ role: "WORKER", name: "Nirmani Silva", helmetId: "PS-H-LOC1" });
+    await packet(worker.userId, "PS-H-LOC1", { timestamp: minutesAgo(1), raw: { gps: { lat: 6.9271, lon: 79.8612 } } });
 
-    await packet(recentWorker.userId, "PS-H-1", { timestamp: minutesAgo(1), raw: { gps: { lat: 6.9, lon: 79.8 } } });
-    // 3 days old — must NOT count as currently reporting (#15).
-    await packet(staleWorker.userId, "PS-H-2", {
+    const res = await request(app).get("/api/dashboard/admin").set(authHeader(admin));
+
+    expect(Array.isArray(res.body.locations)).toBe(true);
+    expect(res.body.locations).toEqual([
+      expect.objectContaining({
+        userId: worker.userId,
+        workerName: "Nirmani Silva",
+        helmetId: "PS-H-LOC1",
+        lat: 6.9271,
+        lon: 79.8612,
+        online: true,
+      }),
+    ]);
+  });
+
+  test("online helmet -> GREEN-equivalent online:true; offline helmet -> online:false", async () => {
+    const admin = await createUser({ role: "ADMIN" });
+    await Helmet.create({ helmetId: "PS-H-ONLINE-LOC" });
+    await Helmet.create({ helmetId: "PS-H-OFFLINE-LOC" });
+    const onlineWorker = await createUser({ role: "WORKER", helmetId: "PS-H-ONLINE-LOC" });
+    const offlineWorker = await createUser({ role: "WORKER", helmetId: "PS-H-OFFLINE-LOC" });
+
+    await packet(onlineWorker.userId, "PS-H-ONLINE-LOC", { timestamp: minutesAgo(1), raw: { gps: { lat: 6.9, lon: 79.8 } } });
+    await packet(offlineWorker.userId, "PS-H-OFFLINE-LOC", {
       timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
       raw: { gps: { lat: 6.9, lon: 79.8 } },
     });
-    await packet(noGpsWorker.userId, "PS-H-3", { timestamp: minutesAgo(1) }); // no gps field
 
     const res = await request(app).get("/api/dashboard/admin").set(authHeader(admin));
-    expect(res.body.locations).toEqual({ reportingCount: 1, totalWorkers: 3 });
+    const online = res.body.locations.find((l) => l.userId === onlineWorker.userId);
+    const offline = res.body.locations.find((l) => l.userId === offlineWorker.userId);
+
+    expect(online.online).toBe(true);
+    expect(offline.online).toBe(false);
+    // Offline pin still uses its last known (old) location, not omitted.
+    expect(offline.lat).toBe(6.9);
+    expect(offline.locationTimestamp).toBeDefined();
+  });
+
+  test("uses the latest packet WITH valid GPS even when the overall latest packet has none (#23)", async () => {
+    const admin = await createUser({ role: "ADMIN" });
+    await Helmet.create({ helmetId: "PS-H-MIXED" });
+    const worker = await createUser({ role: "WORKER", helmetId: "PS-H-MIXED" });
+
+    await packet(worker.userId, "PS-H-MIXED", { timestamp: minutesAgo(10), raw: { gps: { lat: 6.5, lon: 79.5 } } });
+    // Most recent packet overall — no GPS. Must NOT blank out the location.
+    await packet(worker.userId, "PS-H-MIXED", { timestamp: minutesAgo(1) });
+
+    const res = await request(app).get("/api/dashboard/admin").set(authHeader(admin));
+    const entry = res.body.locations.find((l) => l.userId === worker.userId);
+
+    expect(entry).toBeDefined();
+    expect(entry.lat).toBe(6.5);
+    expect(entry.lon).toBe(79.5);
+    // Online/offline still reflects the overall latest packet (1 min ago).
+    expect(entry.online).toBe(true);
+  });
+
+  test("worker without a helmet is excluded", async () => {
+    const admin = await createUser({ role: "ADMIN" });
+    await createUser({ role: "WORKER", helmetId: null });
+
+    const res = await request(app).get("/api/dashboard/admin").set(authHeader(admin));
+    expect(res.body.locations).toEqual([]);
+  });
+
+  test("worker with no genuine GPS ever recorded is excluded, not shown at a fake location", async () => {
+    const admin = await createUser({ role: "ADMIN" });
+    await Helmet.create({ helmetId: "PS-H-NOGPS" });
+    const worker = await createUser({ role: "WORKER", helmetId: "PS-H-NOGPS" });
+    await packet(worker.userId, "PS-H-NOGPS", { timestamp: minutesAgo(1) }); // no gps field at all
+
+    const res = await request(app).get("/api/dashboard/admin").set(authHeader(admin));
+    expect(res.body.locations).toEqual([]);
+  });
+
+  test("a soft-deleted worker is excluded even if their old helmet still has GPS history", async () => {
+    const admin = await createUser({ role: "ADMIN" });
+    await Helmet.create({ helmetId: "PS-H-DELETEDWORKER" });
+    const worker = await createUser({ role: "WORKER", helmetId: "PS-H-DELETEDWORKER", active: false });
+    await packet(worker.userId, "PS-H-DELETEDWORKER", { timestamp: minutesAgo(1), raw: { gps: { lat: 6.9, lon: 79.8 } } });
+
+    const res = await request(app).get("/api/dashboard/admin").set(authHeader(admin));
+    expect(res.body.locations.find((l) => l.userId === worker.userId)).toBeUndefined();
+  });
+
+  test("a soft-deleted helmet is excluded even if the worker record still points at it", async () => {
+    const admin = await createUser({ role: "ADMIN" });
+    await Helmet.create({ helmetId: "PS-H-DELETEDHELMET", active: false, deletedAt: new Date() });
+    const worker = await createUser({ role: "WORKER", helmetId: "PS-H-DELETEDHELMET" });
+    await packet(worker.userId, "PS-H-DELETEDHELMET", { timestamp: minutesAgo(1), raw: { gps: { lat: 6.9, lon: 79.8 } } });
+
+    const res = await request(app).get("/api/dashboard/admin").set(authHeader(admin));
+    expect(res.body.locations).toEqual([]);
+  });
+
+  test("operationalState is EMERGENCY when active, never a stale risk state", async () => {
+    const admin = await createUser({ role: "ADMIN" });
+    await Helmet.create({ helmetId: "PS-H-EMRG-LOC" });
+    const worker = await createUser({ role: "WORKER", helmetId: "PS-H-EMRG-LOC" });
+    await packet(worker.userId, "PS-H-EMRG-LOC", { timestamp: minutesAgo(1), raw: { gps: { lat: 6.9, lon: 79.8 } } });
+    await WorkerProcessingState.create({ workerId: worker.userId, currentRiskState: "SAFE", emergencyActive: true });
+
+    const res = await request(app).get("/api/dashboard/admin").set(authHeader(admin));
+    const entry = res.body.locations.find((l) => l.userId === worker.userId);
+    expect(entry.operationalState).toBe("EMERGENCY");
+  });
+});
+
+describe("GET /api/dashboard/admin — recent alerts 7-day window (#7/#36)", () => {
+  test("an alert older than 7 days is excluded from the dashboard but remains in the database", async () => {
+    const admin = await createUser({ role: "ADMIN" });
+    const worker = await createUser({ role: "WORKER" });
+
+    const oldAlert = await Alert.create({
+      type: "TRANSITION", workerId: worker.userId, helmetId: "PS-H-1",
+      timestamp: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
+      previousRiskState: "SAFE", currentRiskState: "WARNING",
+    });
+    await Alert.create({
+      type: "TRANSITION", workerId: worker.userId, helmetId: "PS-H-1", timestamp: minutesAgo(5),
+      previousRiskState: "SAFE", currentRiskState: "CRITICAL",
+    });
+
+    const res = await request(app).get("/api/dashboard/admin").set(authHeader(admin));
+    expect(res.body.recentAlerts.map((a) => a.id)).not.toContain(String(oldAlert._id));
+    expect(res.body.recentAlerts).toHaveLength(1);
+
+    // Still in the database — never physically deleted (#4).
+    const stillThere = await Alert.findById(oldAlert._id);
+    expect(stillThere).not.toBeNull();
   });
 });
 

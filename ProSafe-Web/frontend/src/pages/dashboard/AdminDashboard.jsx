@@ -48,13 +48,13 @@ export function AdminDashboard() {
         <MetricCard icon="✅" label="Safe Workers" value={data.summary.safeWorkers} tone="green" />
       </div>
 
-      <div className="ps-dashboard-mid-row">
+      <div className="ps-dashboard-content-grid">
         <WorkerStatusSummary workerStatus={data.workerStatus} />
-        <RecentAlertsCard alerts={data.recentAlerts} emptyMessage="No alerts recorded yet." />
+        <RecentAlertsCard emptyMessage="No alerts recorded yet." />
+        <HelmetHealthCard helmetStatus={data.helmetStatus} />
       </div>
 
-      <div className="ps-dashboard-bottom-row">
-        <HelmetHealthCard helmetStatus={data.helmetStatus} />
+      <div className="ps-dashboard-map-row">
         <WorkerLocationCard locations={data.locations} />
       </div>
     </div>

@@ -11,6 +11,7 @@ const { runPrediction } = require("./mlService");
 const { checkPredictionConfidence, updatePredictionHistory, compareAndUpdateRiskState } = require("./predictionService");
 const { generateAlert } = require("./alertService");
 const { sendRiskCommand } = require("./helmetCommandService");
+const notificationService = require("./notificationService");
 
 // Orchestrates the exact stage order for a normal-condition packet:
 // validate -> identify -> baseline -> deviations -> exposure -> feature
@@ -117,6 +118,31 @@ async function processPacket(body) {
             confidence: confidenceCheck.confidence,
             raw,
           });
+
+          // Notification generation is non-critical (notificationService
+          // never throws) and only ever fires on a genuine new alert —
+          // `stateChanged` already gates duplicate transitions upstream, so
+          // a retried/duplicate packet can never double-notify.
+          const notifyTitle = `Risk changed: ${previousRiskState} → ${currentRiskState}`;
+          const notifyMessage = `Worker ${workerId}'s risk state changed to ${currentRiskState}.`;
+          await Promise.all([
+            notificationService.notifyAdmins({
+              type: "NEW_ALERT",
+              title: notifyTitle,
+              message: notifyMessage,
+              relatedEntityType: "ALERT",
+              relatedEntityId: String(alert._id),
+              metadata: { workerId, helmetId, previousRiskState, currentRiskState },
+            }),
+            notificationService.notifyUser(workerId, {
+              type: "NEW_ALERT",
+              title: notifyTitle,
+              message: `Your risk state changed to ${currentRiskState}.`,
+              relatedEntityType: "ALERT",
+              relatedEntityId: String(alert._id),
+              metadata: { helmetId, previousRiskState, currentRiskState },
+            }),
+          ]);
         }
       }
     }

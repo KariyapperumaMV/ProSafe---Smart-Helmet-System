@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { UserAvatar } from "../ui/UserAvatar";
+import { NotificationBell } from "./NotificationBell";
 import { USER_ROLES } from "../../constants/roles";
 
 export function Header({ onMenuClick }) {
@@ -37,9 +38,7 @@ export function Header({ onMenuClick }) {
       </div>
 
       <div className="ps-header-actions">
-        <button type="button" className="ps-icon-btn" aria-label="Notifications">
-          🔔
-        </button>
+        <NotificationBell />
 
         <div className="ps-user-menu" ref={menuRef}>
           <button

@@ -116,6 +116,95 @@ describe("useNotifications", () => {
     expect(result.current.unreadCount).toBe(4);
   });
 
+  test("a WORKER with emergencyAlerts=false does not toast for EMERGENCY_ALERT, but the notification still lands in the inbox", async () => {
+    useAuth.mockReturnValue({
+      isAuthenticated: true,
+      user: { role: "WORKER", preferences: { notifications: { emergencyAlerts: false } } },
+    });
+    const { result } = renderHook(() => useNotifications());
+    await waitFor(() => expect(streamCalls).toHaveLength(1));
+
+    act(() => {
+      streamCalls[0].onEvent({ id: "1", type: "EMERGENCY_ALERT", title: "Emergency", message: "help", read: false });
+    });
+
+    expect(showToast).not.toHaveBeenCalled();
+    expect(result.current.notifications[0].id).toBe("1"); // inbox delivery is unconditional
+    expect(result.current.unreadCount).toBe(1);
+  });
+
+  test("an ADMIN always toasts for EMERGENCY_ALERT even if the stored preference says false (tamper-proof override, #7)", async () => {
+    useAuth.mockReturnValue({
+      isAuthenticated: true,
+      user: { role: "ADMIN", preferences: { notifications: { emergencyAlerts: false } } },
+    });
+    renderHook(() => useNotifications());
+    await waitFor(() => expect(streamCalls).toHaveLength(1));
+
+    act(() => {
+      streamCalls[0].onEvent({ id: "1", type: "EMERGENCY_ALERT", title: "Emergency", message: "help", read: false });
+    });
+
+    expect(showToast).toHaveBeenCalledTimes(1);
+  });
+
+  test("safetyAlerts=false silences the CRITICAL NEW_ALERT toast", async () => {
+    useAuth.mockReturnValue({
+      isAuthenticated: true,
+      user: { role: "WORKER", preferences: { notifications: { safetyAlerts: false } } },
+    });
+    renderHook(() => useNotifications());
+    await waitFor(() => expect(streamCalls).toHaveLength(1));
+
+    act(() => {
+      streamCalls[0].onEvent({ id: "1", type: "NEW_ALERT", title: "Risk", message: "critical", read: false, metadata: { currentRiskState: "CRITICAL" } });
+    });
+
+    expect(showToast).not.toHaveBeenCalled();
+  });
+
+  test("emergencyResetUpdates gates EMERGENCY_RESET_REQUESTED/RESOLVED toasts", async () => {
+    useAuth.mockReturnValue({
+      isAuthenticated: true,
+      user: { role: "ADMIN", preferences: { notifications: { emergencyResetUpdates: false } } },
+    });
+    renderHook(() => useNotifications());
+    await waitFor(() => expect(streamCalls).toHaveLength(1));
+
+    act(() => {
+      streamCalls[0].onEvent({ id: "1", type: "EMERGENCY_RESET_REQUESTED", title: "Reset requested", message: "m", read: false });
+    });
+    act(() => {
+      streamCalls[0].onEvent({ id: "2", type: "EMERGENCY_RESOLVED", title: "Resolved", message: "m", read: false });
+    });
+
+    expect(showToast).not.toHaveBeenCalled();
+  });
+
+  test("changing the preference while the app is already running affects the very next event — no stale closure, no reconnect", async () => {
+    let currentUser = { role: "WORKER", preferences: { notifications: { safetyAlerts: true } } };
+    useAuth.mockImplementation(() => ({ isAuthenticated: true, user: currentUser }));
+
+    const { rerender } = renderHook(() => useNotifications());
+    await waitFor(() => expect(streamCalls).toHaveLength(1));
+
+    act(() => {
+      streamCalls[0].onEvent({ id: "1", type: "NEW_ALERT", title: "Risk", message: "critical", read: false, metadata: { currentRiskState: "CRITICAL" } });
+    });
+    expect(showToast).toHaveBeenCalledTimes(1); // toasted while the preference was still true
+
+    // User flips the preference off (simulating a Settings save updating
+    // AuthContext) — the SAME stream connection must pick this up.
+    currentUser = { role: "WORKER", preferences: { notifications: { safetyAlerts: false } } };
+    rerender();
+
+    act(() => {
+      streamCalls[0].onEvent({ id: "2", type: "NEW_ALERT", title: "Risk", message: "critical again", read: false, metadata: { currentRiskState: "CRITICAL" } });
+    });
+    expect(showToast).toHaveBeenCalledTimes(1); // unchanged — the second event did not toast
+    expect(streamNotifications).toHaveBeenCalledTimes(1); // still the same connection, never reconnected
+  });
+
   test("reconnects with capped backoff after an unexpected disconnect, and resets backoff after a clean reconnect", async () => {
     vi.useFakeTimers();
     renderHook(() => useNotifications());

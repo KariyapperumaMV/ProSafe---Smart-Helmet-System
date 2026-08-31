@@ -17,11 +17,32 @@ const RECONNECT_DELAYS_MS = [2000, 5000, 10000];
 // notification history/inbox.
 const DROPDOWN_LIMIT = 20;
 
-// A live event only interrupts the user (toast) when it's genuinely urgent.
-// Everything else just updates the badge/dropdown silently.
-function shouldToast(event) {
-  if (event.type === "EMERGENCY_ALERT") return true;
-  if (event.type === "NEW_ALERT" && event.metadata?.currentRiskState === "CRITICAL") return true;
+// A live event only interrupts the user (toast) when it's genuinely urgent
+// AND the user's stored preference allows it — this gates the TOAST only.
+// The Notification document itself was already created unconditionally by
+// the backend before this event ever reaches the client (see
+// notificationService.safeCreate) — a preference can silence the popup, it
+// can never make the event disappear from the bell/inbox.
+//
+// ADMIN + EMERGENCY_ALERT is a hard override: always toasts, regardless of
+// what the stored preference says, so a corrupted/tampered value can't
+// suppress it (#7). `!== false` (not `=== true`) elsewhere means a missing/
+// not-yet-loaded preference fails open toward MORE visibility, not less.
+function shouldToast(event, { role, preferences = {} } = {}) {
+  if (event.type === "EMERGENCY_ALERT") {
+    if (role === "ADMIN") return true;
+    return preferences.emergencyAlerts !== false;
+  }
+  if (event.type === "NEW_ALERT" && event.metadata?.currentRiskState === "CRITICAL") {
+    return preferences.safetyAlerts !== false;
+  }
+  if (event.type === "EMERGENCY_RESET_REQUESTED" || event.type === "EMERGENCY_RESOLVED") {
+    return preferences.emergencyResetUpdates !== false;
+  }
+  // USER_CREATED and everything else: preserve the pre-existing quiet
+  // behavior (bell/inbox only, never a toast) — accountNotifications/
+  // reportNotifications are stored for future toast-worthy event types,
+  // not wired to anything that toasts today (#10/#11).
   return false;
 }
 
@@ -30,7 +51,7 @@ function shouldToast(event) {
 // an Authorization header, so it isn't used). Owns the reconnect loop,
 // stops entirely on logout, and aborts cleanly on unmount.
 export function useNotifications() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { showToast } = useToast();
 
   const [notifications, setNotifications] = useState([]);
@@ -44,13 +65,22 @@ export function useNotifications() {
 
   const showToastRef = useRef(showToast);
   showToastRef.current = showToast;
+  // handleEvent is created once ([] deps) and lives for the whole SSE
+  // connection's lifetime — reading `user` directly would close over
+  // whatever it was on mount. A ref (updated every render, like
+  // showToastRef above) keeps toast decisions using the LATEST role/
+  // preferences without needing to tear down and reconnect the stream
+  // whenever a preference changes (#22).
+  const userRef = useRef(user);
+  userRef.current = user;
 
   const handleEvent = useCallback((event) => {
     setNotifications((prev) => [event, ...prev].slice(0, DROPDOWN_LIMIT));
     if (!event.read) setUnreadCount((prev) => prev + 1);
     setLastEvent(event);
 
-    if (shouldToast(event)) {
+    const currentUser = userRef.current;
+    if (shouldToast(event, { role: currentUser?.role, preferences: currentUser?.preferences?.notifications })) {
       showToastRef.current(event.message || event.title, { type: "error", duration: 8000 });
     }
   }, []);

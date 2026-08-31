@@ -8,6 +8,19 @@ const notificationService = require("../services/notificationService");
 
 const PROFILE_IMAGE_BASE = "/uploads/profile-images";
 
+// Settings > Account is self-service only — never a route to privilege
+// escalation. Anything not in this list is REJECTED outright (400), not
+// silently dropped, so an attempt like {"role":"ADMIN"} is visible in the
+// response rather than quietly ignored (#2).
+const DISALLOWED_SELF_UPDATE_FIELDS = [
+  "userId", "email", "nic", "role", "helmetId",
+  "baselineHeartRate", "baselineBodyTemperature", "passwordHash",
+  "active", "deletedAt", "createdBy", "updatedBy", "deletedBy",
+];
+const ALLOWED_NOTIFICATION_PREF_KEYS = [
+  "safetyAlerts", "emergencyAlerts", "emergencyResetUpdates", "accountNotifications", "reportNotifications",
+];
+
 // For a WORKER with a helmet, pull the operational snapshot (#15) from the
 // processing pipeline's own collections instead of duplicating any of it on
 // User. Returns null fields when the pipeline hasn't produced anything yet
@@ -81,6 +94,65 @@ exports.getMe = async (req, res, next) => {
     const operational = await buildWorkerOperationalData(user);
     res.status(200).json({ user: userService.toPublicUser(user), ...(operational || {}) });
   } catch (err) {
+    next(err);
+  }
+};
+
+// PATCH /api/users/me — any authenticated user, self-scoped via req.user.id
+// only (never a client-supplied id, so there's nothing to spoof). Settings'
+// Account/Notification cards both post here with a partial body.
+exports.updateMe = async (req, res, next) => {
+  try {
+    const disallowedSent = DISALLOWED_SELF_UPDATE_FIELDS.filter((f) => req.body[f] !== undefined);
+    if (disallowedSent.length) {
+      return res.status(400).json({
+        message: "One or more fields cannot be changed from Settings.",
+        errors: Object.fromEntries(disallowedSent.map((f) => [f, "Not editable from Settings"])),
+      });
+    }
+
+    const user = await User.findOne({ userId: req.user.id, active: true });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const { name, phone, address } = req.body;
+    const { valid, errors } = userService.validateUserFields({ name, phone }, { isUpdate: true });
+    if (!valid) {
+      return res.status(400).json({ message: "Validation failed", errors });
+    }
+
+    let notificationPreferences = req.body.notificationPreferences;
+    if (typeof notificationPreferences === "string") {
+      try {
+        notificationPreferences = JSON.parse(notificationPreferences);
+      } catch {
+        return res.status(400).json({ message: "Validation failed", errors: { notificationPreferences: "Must be a valid object" } });
+      }
+    }
+
+    if (name !== undefined) user.name = name.trim();
+    if (phone !== undefined) user.phone = phone;
+    if (address !== undefined) user.address = address || null;
+
+    if (notificationPreferences !== undefined && notificationPreferences !== null && typeof notificationPreferences === "object") {
+      for (const key of ALLOWED_NOTIFICATION_PREF_KEYS) {
+        if (typeof notificationPreferences[key] === "boolean") {
+          user.preferences.notifications[key] = notificationPreferences[key];
+        }
+      }
+    }
+
+    if (req.file) {
+      user.profileImageUrl = `${PROFILE_IMAGE_BASE}/${req.file.filename}`;
+    }
+
+    await user.save();
+    res.status(200).json({ user: userService.toPublicUser(user) });
+  } catch (err) {
+    if (err.code === 11000) {
+      return res.status(409).json({ message: "Duplicate field", errors: err.keyValue });
+    }
     next(err);
   }
 };

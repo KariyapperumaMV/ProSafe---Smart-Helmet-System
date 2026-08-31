@@ -4,6 +4,7 @@ const router = express.Router();
 const {
   listUsers,
   getMe,
+  updateMe,
   getUserById,
   createUser,
   updateUser,
@@ -25,7 +26,11 @@ const { USER_ROLES } = require("../constants/roles");
 router.use(verifyToken);
 
 // Self-service — before the :id routes so "me" is never treated as an id.
+// uploadProfileImage is mounted unconditionally (same as PUT /:id) — it's a
+// no-op when the request isn't multipart/form-data, so a plain JSON PATCH
+// (no photo change) works exactly the same as one with a file attached.
 router.get("/me", getMe);
+router.patch("/me", uploadProfileImage, updateMe);
 
 router.get("/", requireRole(USER_ROLES.ADMIN), listUsers);
 router.get("/:id", requireRole(USER_ROLES.ADMIN), getUserById);

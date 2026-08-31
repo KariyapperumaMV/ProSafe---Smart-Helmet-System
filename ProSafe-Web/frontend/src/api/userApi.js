@@ -38,6 +38,18 @@ export async function createUser(payload) {
   }
 }
 
+// Settings > Account/Notifications both post here with a partial body —
+// PATCH /api/users/me is always self-scoped server-side (no id in the URL),
+// so there's nothing here to target another account with.
+export async function updateMe(payload) {
+  try {
+    const { data } = await apiClient.patch("/users/me", payload);
+    return data;
+  } catch (err) {
+    throw normalizeApiError(err);
+  }
+}
+
 export async function updateUser(id, payload) {
   try {
     const { data } = await apiClient.put(`/users/${id}`, payload);

@@ -135,4 +135,7 @@ module.exports = {
   findConflicts,
   validateHelmetAssignment,
   toPublicUser,
+  // Shared with authController.changePassword so Admin Create/Edit User and
+  // Settings > Change Password enforce the exact same rule from one place.
+  isValidPassword,
 };

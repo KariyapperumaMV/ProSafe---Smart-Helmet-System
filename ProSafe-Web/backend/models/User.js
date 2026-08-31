@@ -1,6 +1,29 @@
 const mongoose = require("mongoose");
 const { USER_ROLES } = require("../constants/roles");
 
+// Controls TOAST/interruption behavior only — never whether a Notification
+// document is created. Inbox delivery (notificationService.safeCreate) is
+// unconditional for every recipient regardless of these flags; see
+// frontend/src/hooks/useNotifications.js's shouldToast(), the only place
+// these are read. `default: () => ({})` at every level (matching the
+// existing WorkerProcessingState.exposureTrackerSchema convention) means an
+// old User document saved before this field existed still hydrates with
+// every flag defaulting to true — no migration needed.
+const notificationPreferencesSchema = new mongoose.Schema({
+  safetyAlerts: { type: Boolean, default: true },
+  emergencyAlerts: { type: Boolean, default: true },
+  emergencyResetUpdates: { type: Boolean, default: true },
+  accountNotifications: { type: Boolean, default: true },
+  // Reserved for future scheduled DAILY/WEEKLY/MONTHLY_REPORT_READY
+  // notifications (not generated yet — see Notification model) so the
+  // Settings toggle isn't wired to nothing once that ships.
+  reportNotifications: { type: Boolean, default: true },
+}, { _id: false });
+
+const preferencesSchema = new mongoose.Schema({
+  notifications: { type: notificationPreferencesSchema, default: () => ({}) },
+}, { _id: false });
+
 // Single collection for both ADMIN and WORKER accounts. `userId` is the same
 // business key the processing pipeline already calls `workerId` on
 // WorkerProcessingState/HelmetData/Alert/HelmetCommand — those models are
@@ -29,6 +52,8 @@ const userSchema = new mongoose.Schema({
 
   active: { type: Boolean, default: true },
   deletedAt: { type: Date, default: null },
+
+  preferences: { type: preferencesSchema, default: () => ({}) },
 
   createdBy: { type: String, default: null },
   updatedBy: { type: String, default: null },

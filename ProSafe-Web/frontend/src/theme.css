@@ -2152,6 +2152,187 @@ button {
   }
 }
 
+/* ---------- Settings ---------- */
+.ps-settings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--ps-space-4);
+  align-items: start;
+}
+.ps-settings-card {
+  padding: var(--ps-space-4) var(--ps-space-5);
+}
+.ps-settings-span-full {
+  grid-column: 1 / -1;
+}
+.ps-settings-photo-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ps-space-3);
+  margin-bottom: var(--ps-space-4);
+}
+.ps-settings-readonly-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--ps-space-3);
+}
+.ps-settings-role-display {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding-top: 4px;
+}
+
+/* ---------- Toggle switch ---------- */
+.ps-toggle-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ps-space-3);
+  margin: var(--ps-space-3) 0;
+}
+.ps-toggle-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ps-space-4);
+  cursor: pointer;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--ps-border);
+}
+.ps-toggle-row:last-child {
+  border-bottom: none;
+}
+.ps-toggle-row.is-disabled {
+  cursor: default;
+}
+.ps-toggle-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.ps-toggle-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.ps-toggle-desc {
+  font-size: 0.78rem;
+  color: var(--ps-text-muted);
+}
+.ps-toggle-locked-note {
+  font-size: 0.74rem;
+  color: var(--ps-green);
+  font-weight: 600;
+}
+.ps-toggle-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 42px;
+  height: 24px;
+}
+.ps-toggle-switch input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+}
+.ps-toggle-switch input:disabled {
+  cursor: default;
+}
+.ps-toggle-track {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--ps-border-strong);
+  transition: background-color 0.15s ease;
+}
+.ps-toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--ps-text);
+  transition: transform 0.15s ease;
+}
+.ps-toggle-switch input:checked + .ps-toggle-track {
+  background: var(--ps-green);
+  border-color: var(--ps-green-strong);
+}
+.ps-toggle-switch input:checked + .ps-toggle-track .ps-toggle-thumb {
+  transform: translateX(18px);
+  background: #08130d;
+}
+.ps-toggle-switch input:disabled + .ps-toggle-track {
+  opacity: 0.6;
+}
+.ps-toggle-switch input:focus-visible + .ps-toggle-track {
+  outline: 2px solid var(--ps-green);
+  outline-offset: 2px;
+}
+
+@media (max-width: 1024px) {
+  .ps-settings-grid {
+    grid-template-columns: 1fr;
+  }
+  .ps-settings-span-full {
+    grid-column: auto;
+  }
+}
+@media (max-width: 640px) {
+  .ps-settings-readonly-row {
+    grid-template-columns: 1fr;
+  }
+  .ps-settings-photo-row {
+    flex-wrap: wrap;
+  }
+}
+
+/* ---------- Appearance: compact mode ---------- */
+/* Density only — card/section padding and inter-card gaps via the shared
+   spacing tokens. Buttons (.ps-btn) and form inputs (.ps-input/.ps-select/
+   .ps-textarea) use their own hardcoded padding, not these tokens, so touch
+   targets and input height are deliberately unaffected (#14). */
+body.ps-compact {
+  --ps-space-3: 8px;
+  --ps-space-4: 10px;
+  --ps-space-5: 16px;
+}
+body.ps-compact .ps-alert-row,
+body.ps-compact .ps-analytics-table td,
+body.ps-compact .ps-analytics-table th,
+body.ps-compact .ps-notif-item,
+body.ps-compact .ps-mini-rank-list li {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+/* ---------- Appearance: reduced motion ---------- */
+/* The OS-level preference is always honored, independent of the manual
+   toggle below. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+/* The manual "Reduce Animations" toggle forces the same rules regardless of
+   the OS setting — covers modal/dropdown/toast/card transitions everywhere
+   in the app (see useAppearance.js for what it deliberately doesn't cover). */
+body.ps-reduce-motion *,
+body.ps-reduce-motion *::before,
+body.ps-reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
 /* ---------- Focus visibility (a11y) ---------- */
 a:focus-visible,
 button:focus-visible,

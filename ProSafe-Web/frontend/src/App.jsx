@@ -7,7 +7,7 @@ import { RoleRoute } from "./components/routes/RoleRoute";
 import { AppLayout } from "./components/layout/AppLayout";
 import { LoginPage } from "./pages/LoginPage";
 import { ProfilePage } from "./pages/ProfilePage";
-import { PlaceholderPage } from "./pages/PlaceholderPage";
+import { SettingsPage } from "./pages/SettingsPage";
 import { UserListPage } from "./pages/users/UserListPage";
 import { UserViewPage } from "./pages/users/UserViewPage";
 import { AddUserPage } from "./pages/users/AddUserPage";
@@ -36,7 +36,7 @@ export default function App() {
                 <Route element={<AppLayout />}>
                   <Route path="/dashboard" element={<DashboardPage />} />
                   <Route path="/profile" element={<ProfilePage />} />
-                  <Route path="/settings" element={<PlaceholderPage title="Settings" />} />
+                  <Route path="/settings" element={<SettingsPage />} />
 
                   <Route element={<RoleRoute allow={[USER_ROLES.ADMIN]} />}>
                     <Route path="/users" element={<UserListPage />} />

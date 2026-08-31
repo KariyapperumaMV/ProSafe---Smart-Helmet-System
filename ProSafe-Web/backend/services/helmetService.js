@@ -12,6 +12,30 @@ const { helmetOfflineAfterSeconds } = require("../config/appConfig");
 // particular device-naming scheme.
 const HELMET_ID_PATTERN = /^[A-Za-z0-9_-]{3,40}$/;
 
+// The one place the online/offline heartbeat rule is evaluated — every
+// caller (helmet details, dashboard helmet health, dashboard location
+// freshness) goes through this so they can never disagree.
+function isRecentEnoughToBeOnline(lastSeenAt) {
+  if (!lastSeenAt) return null;
+  return Date.now() - new Date(lastSeenAt).getTime() <= helmetOfflineAfterSeconds * 1000;
+}
+
+// Bulk "last packet per helmet" — one aggregation using the existing
+// {helmetId:1, timestamp:-1} index instead of N per-helmet queries or a full
+// HelmetData scan. Returns a Map<helmetId, Date>; a helmetId with no packets
+// at all is simply absent from the map (never a fabricated timestamp).
+async function getLastSeenMap(helmetIds) {
+  if (!helmetIds.length) return new Map();
+
+  const rows = await HelmetData.aggregate([
+    { $match: { helmetId: { $in: helmetIds } } },
+    { $sort: { helmetId: 1, timestamp: -1 } },
+    { $group: { _id: "$helmetId", lastSeen: { $first: "$timestamp" } } },
+  ]);
+
+  return new Map(rows.map((row) => [row._id, row.lastSeen]));
+}
+
 // User.helmetId is the one authoritative assignment relationship (see
 // userService) — Helmet never stores it. Fetched once per list/detail
 // request rather than N+1 queries per row.
@@ -97,9 +121,7 @@ async function getHelmetDetails(helmetId) {
   const lastSeenAt = latestPacket ? latestPacket.timestamp : null;
   // null (not false) when the helmet has never sent anything — "no
   // telemetry yet" is a distinct state from "offline" (#20).
-  const online = lastSeenAt
-    ? Date.now() - new Date(lastSeenAt).getTime() <= helmetOfflineAfterSeconds * 1000
-    : null;
+  const online = isRecentEnoughToBeOnline(lastSeenAt);
 
   return {
     ok: true,
@@ -189,4 +211,9 @@ module.exports = {
   createHelmet,
   deleteHelmet,
   getAssignableHelmets,
+  // Shared with dashboardService so helmet online/offline and worker
+  // assignment are never computed two different ways (#17).
+  getAssignedWorkerMap,
+  isRecentEnoughToBeOnline,
+  getLastSeenMap,
 };

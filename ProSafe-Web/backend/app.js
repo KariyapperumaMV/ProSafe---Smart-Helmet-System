@@ -6,6 +6,7 @@ const helmetDataRoutes = require("./routes/helmetDataRoutes");
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const helmetRoutes = require("./routes/helmetRoutes");
+const dashboardRoutes = require("./routes/dashboardRoutes");
 const errorHandler = require("./middleware/errorHandler");
 
 const app = express();
@@ -32,6 +33,7 @@ app.use("/api/helmet", helmetDataRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/helmets", helmetRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
 app.use(errorHandler);
 

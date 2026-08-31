@@ -18,4 +18,19 @@ module.exports = {
   // tolerates one missed packet without flapping online/offline on every
   // borderline delay. Configurable, not a claim about real device behavior.
   helmetOfflineAfterSeconds: num(process.env.HELMET_OFFLINE_AFTER_SECONDS, 180),
+
+  // Site-wide weather location (Open-Meteo, no API key required) — a single
+  // configured point, not derived from any worker's helmet GPS. Left
+  // undefined (not silently defaulted) when unset; config.env carries a
+  // clearly-labeled Colombo dev placeholder — see the comment there.
+  siteLatitude: process.env.SITE_LATITUDE !== undefined ? Number(process.env.SITE_LATITUDE) : null,
+  siteLongitude: process.env.SITE_LONGITUDE !== undefined ? Number(process.env.SITE_LONGITUDE) : null,
+  siteTimezone: process.env.SITE_TIMEZONE || "Asia/Colombo",
+
+  // A worker's GPS only counts as "currently reporting location" (dashboard
+  // location summary) if their latest packet is within this many seconds —
+  // reuses the same freshness reasoning as the helmet online/offline rule
+  // rather than inventing a second threshold concept. Defaults to the same
+  // value unless explicitly overridden.
+  locationFreshAfterSeconds: num(process.env.LOCATION_FRESH_AFTER_SECONDS, num(process.env.HELMET_OFFLINE_AFTER_SECONDS, 180)),
 };

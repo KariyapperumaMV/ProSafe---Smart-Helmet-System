@@ -12,6 +12,7 @@ import { UserViewPage } from "./pages/users/UserViewPage";
 import { AddUserPage } from "./pages/users/AddUserPage";
 import { EditUserPage } from "./pages/users/EditUserPage";
 import { HelmetListPage } from "./pages/helmets/HelmetListPage";
+import { DashboardPage } from "./pages/DashboardPage";
 import { USER_ROLES } from "./constants/roles";
 
 function LoginRoute() {
@@ -30,7 +31,7 @@ export default function App() {
 
             <Route element={<ProtectedRoute />}>
               <Route element={<AppLayout />}>
-                <Route path="/dashboard" element={<PlaceholderPage title="Dashboard" />} />
+                <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/settings" element={<PlaceholderPage title="Settings" />} />
 

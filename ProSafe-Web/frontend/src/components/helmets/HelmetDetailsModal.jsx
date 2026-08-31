@@ -4,16 +4,7 @@ import { LoadingState } from "../ui/LoadingState";
 import { EmptyState } from "../ui/EmptyState";
 import { StatusBadge, RiskBadge } from "../ui/StatusBadge";
 import { getHelmet } from "../../api/helmetApi";
-
-function relativeTime(iso) {
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const mins = Math.round(diffMs / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins} min ago`;
-  const hours = Math.round(mins / 60);
-  if (hours < 24) return `${hours} hr ago`;
-  return new Date(iso).toLocaleString();
-}
+import { formatRelativeTime as relativeTime } from "../../utils/formatRelativeTime";
 
 // #20/#21 — a popup over the Helmets page. Emergency is shown as its own
 // clearly-labeled state, never folded behind SAFE/WARNING/CRITICAL — same

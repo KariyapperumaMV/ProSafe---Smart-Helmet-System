@@ -5,6 +5,7 @@ const HelmetCommand = require("../models/HelmetCommand");
 const WorkerProcessingState = require("../models/WorkerProcessingState");
 const { USER_ROLES } = require("../constants/roles");
 const { helmetOfflineAfterSeconds } = require("../config/appConfig");
+const { statusFields } = require("./operationalStateService");
 
 // Permissive on purpose — no existing part of the system (validationService,
 // User.helmetId, HelmetCommand.helmetId) enforces any helmetId format
@@ -135,8 +136,7 @@ async function getHelmetDetails(helmetId) {
       latestCommand: latestCommand ? { command: latestCommand.command, risk: latestCommand.risk } : null,
       workerSafety: assignedWorker
         ? {
-            currentRiskState: workerState ? workerState.currentRiskState : null,
-            emergencyActive: workerState ? workerState.emergencyActive : false,
+            ...statusFields(workerState),
           }
         : null,
     },

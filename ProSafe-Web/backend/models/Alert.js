@@ -1,11 +1,16 @@
 const mongoose = require("mongoose");
 const { RISK_STATES } = require("../constants/riskStates");
 
-// One alert per accepted risk-state transition (Stage 15), or per emergency
-// activation. Carries enough of a snapshot to reconstruct the event without
-// joining back to HelmetData/WorkerProcessingState.
+// One alert per accepted risk-state transition (Stage 15), per emergency
+// activation, or per persistent data-quality problem (DATA_QUALITY: the
+// system could not make a trustworthy risk decision for a sustained period,
+// e.g. missing baseline, lost sensor contact, ML service down). Carries enough
+// of a snapshot to reconstruct the event without joining back to
+// HelmetData/WorkerProcessingState.
+const ALERT_TYPES = ["TRANSITION", "EMERGENCY", "DATA_QUALITY"];
+
 const alertSchema = new mongoose.Schema({
-  type: { type: String, enum: ["TRANSITION", "EMERGENCY"], default: "TRANSITION" },
+  type: { type: String, enum: ALERT_TYPES, default: "TRANSITION" },
 
   workerId: { type: String, required: true },
   helmetId: { type: String, required: true },
@@ -16,6 +21,11 @@ const alertSchema = new mongoose.Schema({
   previousRiskState: { type: String, enum: Object.values(RISK_STATES), default: null },
   currentRiskState: { type: String, enum: Object.values(RISK_STATES), default: null },
   confidence: { type: Number, default: null },
+
+  // Only meaningful for type: "DATA_QUALITY".
+  dataQualityReason: { type: String, default: null },
+  dataQualityReasons: { type: [String], default: undefined },
+  uncertainSince: { type: Date, default: null },
 
   sensorSnapshot: {
     heartRate: Number,
@@ -54,3 +64,4 @@ alertSchema.index({ resolved: 1, acknowledged: 1 });
 alertSchema.index({ timestamp: -1 });
 
 module.exports = mongoose.model("Alert", alertSchema);
+module.exports.ALERT_TYPES = ALERT_TYPES;

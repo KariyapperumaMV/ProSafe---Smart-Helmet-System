@@ -14,6 +14,7 @@ import { useNotificationContext } from "../../context/NotificationContext";
 const FILTERS = [
   { key: "ALL", label: "All" },
   { key: "EMERGENCY", label: "Emergency" },
+  { key: "DATA_QUALITY", label: "Data Quality" },
   { key: "WARNING", label: "Warning" },
   { key: "CRITICAL", label: "Critical" },
   { key: "UNREAD", label: "Unread" },
@@ -29,10 +30,12 @@ const LIVE_REFRESH_TYPES = new Set([
   "EMERGENCY_ALERT",
   "EMERGENCY_RESOLVED",
   "EMERGENCY_RESET_REQUESTED",
+  "DATA_QUALITY_ALERT",
 ]);
 
 function alertTone(alert) {
   if (alert.type === "EMERGENCY") return "danger";
+  if (alert.type === "DATA_QUALITY") return "uncertain";
   if (alert.currentRiskState === "CRITICAL") return "critical";
   if (alert.currentRiskState === "WARNING") return "warning";
   return "green";
@@ -42,6 +45,8 @@ function filterParams(filterKey) {
   switch (filterKey) {
     case "EMERGENCY":
       return { type: "EMERGENCY" };
+    case "DATA_QUALITY":
+      return { type: "DATA_QUALITY" };
     case "WARNING":
       return { risk: "WARNING" };
     case "CRITICAL":
@@ -145,7 +150,7 @@ export function RecentAlertsCard({
                 <div className="ps-alert-row-main">
                   <div className="ps-alert-row-top">
                     <span className="ps-alert-row-worker">{alert.workerName}</span>
-                    <StatusBadge tone={alertTone(alert)}>{alert.type}</StatusBadge>
+                    <StatusBadge tone={alertTone(alert)}>{alert.type === "DATA_QUALITY" ? "DATA QUALITY" : alert.type}</StatusBadge>
                     {!alert.resolved && <StatusBadge tone="neutral">Unresolved</StatusBadge>}
                     {alert.resetRequested && <StatusBadge tone="warning">Reset requested</StatusBadge>}
                   </div>

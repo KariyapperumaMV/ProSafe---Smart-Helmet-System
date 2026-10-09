@@ -1,0 +1,420 @@
+
+============================================================
+EXPERIMENT 1: Synthetic -> Worker 1 Real
+============================================================
+Training data: prosafe_synthetic_ml_ready.csv
+Testing data:  prosafe_W001_ml_ready.csv
+
+Training rows: 18,564
+Testing rows:  14,015
+
+Class distribution - training:
+  Safe       5,783  ( 31.2%)
+  Warning   12,207  ( 65.8%)
+  Critical     574  (  3.1%)
+Class distribution - testing:
+  Safe       3,413  ( 24.4%)
+  Warning    9,381  ( 66.9%)
+  Critical   1,221  (  8.7%)
+
+Internal validation (training side only): leave-one-worker-out over 4 training workers (S_001, S_002, S_003, S_004)
+Feature sets compared: BASIC_PERSONALIZED (11), TEMPORAL_PERSONALIZED (26), EXTENDED (38)
+
+Training Random Forest...
+  (selected on training side: EXTENDED, max_depth=None, min_samples_leaf=10; 12 candidates, 83s)
+  Accuracy          : 0.7772
+  Balanced Accuracy : 0.5992
+  Macro F1          : 0.5393
+  Critical Recall   : 0.0049
+  !! POOR Critical detection (Critical recall 0.005 < 0.50)
+
+Training XGBoost...
+  (selected on training side: EXTENDED, max_depth=6, learning_rate=0.05; 12 candidates, 85s)
+  Accuracy          : 0.6768
+  Balanced Accuracy : 0.5699
+  Macro F1          : 0.5092
+  Critical Recall   : 0.0721
+  !! POOR Critical detection (Critical recall 0.072 < 0.50)
+
+Training SVM...
+  (selected on training side: EXTENDED, C=0.3; 9 candidates, 97s)
+  Accuracy          : 0.8197
+  Balanced Accuracy : 0.6205
+  Macro F1          : 0.5685
+  Critical Recall   : 0.0008
+  !! POOR Critical detection (Critical recall 0.001 < 0.50)
+
+Training Logistic Regression...
+  (selected on training side: EXTENDED, C=0.01; 9 candidates, 7s)
+  Accuracy          : 0.7046
+  Balanced Accuracy : 0.8529
+  Macro F1          : 0.6807
+  Critical Recall   : 1.0000
+
+============================================================
+MODEL COMPARISON  (experiment 1, test = W_001)
+============================================================
+              Model Feature Set  Accuracy  Balanced Accuracy  Macro Precision  Macro Recall  Macro F1  Weighted F1  Critical Precision  Critical Recall  Critical F1  Critical-to-Safe Count
+      Random Forest    EXTENDED    0.7772             0.5992           0.8337        0.5992    0.5393       0.7449              1.0000           0.0049       0.0098                       0
+            XGBoost    EXTENDED    0.6768             0.5699           0.7806        0.5699    0.5092       0.6599              1.0000           0.0721       0.1345                       0
+                SVM    EXTENDED    0.8197             0.6205           0.8639        0.6205    0.5685       0.7833              1.0000           0.0008       0.0016                       0
+Logistic Regression    EXTENDED    0.7046             0.8529           0.7003        0.8529    0.6807       0.7383              0.2585           1.0000       0.4108                       0
+Feature sets: BASIC = BASIC_PERSONALIZED (11), TEMPORAL = TEMPORAL_PERSONALIZED (26), EXTENDED (38)
+  !! Random Forest: POOR Critical detection (Critical recall 0.005 < 0.50)
+  !! XGBoost: POOR Critical detection (Critical recall 0.072 < 0.50)
+  !! SVM: POOR Critical detection (Critical recall 0.001 < 0.50)
+
+============================================================
+DETAILED CLASSIFICATION REPORTS  (experiment 1)
+============================================================
+
+--- Random Forest (EXTENDED) ---
+              precision    recall  f1-score   support
+
+        Safe     0.6427    0.9938    0.7806      3413
+     Warning     0.8584    0.7990    0.8276      9381
+    Critical     1.0000    0.0049    0.0098      1221
+
+    accuracy                         0.7772     14015
+   macro avg     0.8337    0.5992    0.5393     14015
+weighted avg     0.8182    0.7772    0.7449     14015
+
+Confusion matrix (rows = true, columns = predicted: Safe, Warning, Critical)
+  Safe        3,392      21       0
+  Warning     1,886   7,495       0
+  Critical        0   1,215       6
+
+--- XGBoost (EXTENDED) ---
+              precision    recall  f1-score   support
+
+        Safe     0.5012    0.9994    0.6676      3413
+     Warning     0.8406    0.6381    0.7255      9381
+    Critical     1.0000    0.0721    0.1345      1221
+
+    accuracy                         0.6768     14015
+   macro avg     0.7806    0.5699    0.5092     14015
+weighted avg     0.7718    0.6768    0.6599     14015
+
+Confusion matrix (rows = true, columns = predicted: Safe, Warning, Critical)
+  Safe        3,411       2       0
+  Warning     3,395   5,986       0
+  Critical        0   1,133      88
+
+--- SVM (EXTENDED) ---
+              precision    recall  f1-score   support
+
+        Safe     0.7231    1.0000    0.8393      3413
+     Warning     0.8687    0.8607    0.8647      9381
+    Critical     1.0000    0.0008    0.0016      1221
+
+    accuracy                         0.8197     14015
+   macro avg     0.8639    0.6205    0.5685     14015
+weighted avg     0.8447    0.8197    0.7833     14015
+
+Confusion matrix (rows = true, columns = predicted: Safe, Warning, Critical)
+  Safe        3,413       0       0
+  Warning     1,307   8,074       0
+  Critical        0   1,220       1
+
+--- Logistic Regression (EXTENDED) ---
+              precision    recall  f1-score   support
+
+        Safe     0.8425    1.0000    0.9145      3413
+     Warning     1.0000    0.5587    0.7169      9381
+    Critical     0.2585    1.0000    0.4108      1221
+
+    accuracy                         0.7046     14015
+   macro avg     0.7003    0.8529    0.6807     14015
+weighted avg     0.8970    0.7046    0.7383     14015
+
+Confusion matrix (rows = true, columns = predicted: Safe, Warning, Critical)
+  Safe        3,413       0       0
+  Warning       638   5,241   3,502
+  Critical        0       0   1,221
+
+============================================================
+EXPERIMENT 2: Synthetic + Worker 1 -> Worker 2 Real
+============================================================
+Training data: prosafe_synthetic_ml_ready.csv + prosafe_W001_ml_ready.csv
+Testing data:  prosafe_W002_ml_ready.csv
+
+Training rows: 32,579
+Testing rows:  13,825
+
+Class distribution - training:
+  Safe       9,196  ( 28.2%)
+  Warning   21,588  ( 66.3%)
+  Critical   1,795  (  5.5%)
+Class distribution - testing:
+  Safe       7,114  ( 51.5%)
+  Warning    6,451  ( 46.7%)
+  Critical     260  (  1.9%)
+
+Internal validation (training side only): leave-one-worker-out over 5 training workers (S_001, S_002, S_003, S_004, W_001)
+Feature sets compared: BASIC_PERSONALIZED (11), TEMPORAL_PERSONALIZED (26), EXTENDED (38)
+
+Training Random Forest...
+  (selected on training side: BASIC_PERSONALIZED, max_depth=12, min_samples_leaf=10; 12 candidates, 184s)
+  Accuracy          : 0.7243
+  Balanced Accuracy : 0.4896
+  Macro F1          : 0.4849
+  Critical Recall   : 0.0000
+  !! UNSAFE: misses every Critical second (Critical recall = 0)
+
+Training XGBoost...
+  (selected on training side: BASIC_PERSONALIZED, max_depth=3, learning_rate=0.05; 12 candidates, 121s)
+  Accuracy          : 0.7502
+  Balanced Accuracy : 0.5064
+  Macro F1          : 0.5014
+  Critical Recall   : 0.0000
+  !! UNSAFE: misses every Critical second (Critical recall = 0)
+
+Training SVM...
+  (selected on training side: EXTENDED, C=0.3; 9 candidates, 330s)
+  Accuracy          : 0.9036
+  Balanced Accuracy : 0.6147
+  Macro F1          : 0.6080
+  Critical Recall   : 0.0000
+  !! UNSAFE: misses every Critical second (Critical recall = 0)
+
+Training Logistic Regression...
+  (selected on training side: EXTENDED, C=0.01; 9 candidates, 17s)
+  Accuracy          : 0.9092
+  Balanced Accuracy : 0.6177
+  Macro F1          : 0.6148
+  Critical Recall   : 0.0000
+  !! UNSAFE: misses every Critical second (Critical recall = 0)
+
+============================================================
+MODEL COMPARISON  (experiment 2, test = W_002)
+============================================================
+              Model Feature Set  Accuracy  Balanced Accuracy  Macro Precision  Macro Recall  Macro F1  Weighted F1  Critical Precision  Critical Recall  Critical F1  Critical-to-Safe Count
+      Random Forest       BASIC    0.7243             0.4896           0.4831        0.4896    0.4849       0.7155              0.0000           0.0000       0.0000                       0
+            XGBoost       BASIC    0.7502             0.5064           0.5029        0.5064    0.5014       0.7399              0.0000           0.0000       0.0000                       1
+                SVM    EXTENDED    0.9036             0.6147           0.6031        0.6147    0.6080       0.8954              0.0000           0.0000       0.0000                       0
+Logistic Regression    EXTENDED    0.9092             0.6177           0.6123        0.6177    0.6148       0.9058              0.0000           0.0000       0.0000                       0
+Feature sets: BASIC = BASIC_PERSONALIZED (11), TEMPORAL = TEMPORAL_PERSONALIZED (26), EXTENDED (38)
+  !! Random Forest: UNSAFE: misses every Critical second (Critical recall = 0)
+  !! XGBoost: UNSAFE: misses every Critical second (Critical recall = 0)
+  !! SVM: UNSAFE: misses every Critical second (Critical recall = 0)
+  !! Logistic Regression: UNSAFE: misses every Critical second (Critical recall = 0)
+
+============================================================
+DETAILED CLASSIFICATION REPORTS  (experiment 2)
+============================================================
+
+--- Random Forest (BASIC_PERSONALIZED) ---
+              precision    recall  f1-score   support
+
+        Safe     0.7232    0.8119    0.7650      7114
+     Warning     0.7261    0.6568    0.6897      6451
+    Critical     0.0000    0.0000    0.0000       260
+
+    accuracy                         0.7243     13825
+   macro avg     0.4831    0.4896    0.4849     13825
+weighted avg     0.7110    0.7243    0.7155     13825
+
+Confusion matrix (rows = true, columns = predicted: Safe, Warning, Critical)
+  Safe        5,776   1,338       0
+  Warning     2,211   4,237       3
+  Critical        0     260       0
+
+--- XGBoost (BASIC_PERSONALIZED) ---
+              precision    recall  f1-score   support
+
+        Safe     0.7351    0.8621    0.7936      7114
+     Warning     0.7737    0.6571    0.7106      6451
+    Critical     0.0000    0.0000    0.0000       260
+
+    accuracy                         0.7502     13825
+   macro avg     0.5029    0.5064    0.5014     13825
+weighted avg     0.7393    0.7502    0.7399     13825
+
+Confusion matrix (rows = true, columns = predicted: Safe, Warning, Critical)
+  Safe        6,133     981       0
+  Warning     2,209   4,239       3
+  Critical        1     259       0
+
+--- SVM (EXTENDED) ---
+              precision    recall  f1-score   support
+
+        Safe     0.9474    0.8991    0.9226      7114
+     Warning     0.8617    0.9450    0.9014      6451
+    Critical     0.0000    0.0000    0.0000       260
+
+    accuracy                         0.9036     13825
+   macro avg     0.6031    0.6147    0.6080     13825
+weighted avg     0.8896    0.9036    0.8954     13825
+
+Confusion matrix (rows = true, columns = predicted: Safe, Warning, Critical)
+  Safe        6,396     718       0
+  Warning       355   6,096       0
+  Critical        0     260       0
+
+--- Logistic Regression (EXTENDED) ---
+              precision    recall  f1-score   support
+
+        Safe     0.9503    0.9296    0.9398      7114
+     Warning     0.8867    0.9234    0.9047      6451
+    Critical     0.0000    0.0000    0.0000       260
+
+    accuracy                         0.9092     13825
+   macro avg     0.6123    0.6177    0.6148     13825
+weighted avg     0.9028    0.9092    0.9058     13825
+
+Confusion matrix (rows = true, columns = predicted: Safe, Warning, Critical)
+  Safe        6,613     501       0
+  Warning       346   5,957     148
+  Critical        0     260       0
+
+============================================================
+EXPERIMENT 3: Worker 1 -> Worker 2 Real
+============================================================
+Training data: prosafe_W001_ml_ready.csv
+Testing data:  prosafe_W002_ml_ready.csv
+
+Training rows: 14,015
+Testing rows:  13,825
+
+Class distribution - training:
+  Safe       3,413  ( 24.4%)
+  Warning    9,381  ( 66.9%)
+  Critical   1,221  (  8.7%)
+Class distribution - testing:
+  Safe       7,114  ( 51.5%)
+  Warning    6,451  ( 46.7%)
+  Critical     260  (  1.9%)
+
+Internal validation (training side only): 5 contiguous time blocks of the single training worker, 300 rows purged around each validation block
+Feature sets compared: BASIC_PERSONALIZED (11), TEMPORAL_PERSONALIZED (26), EXTENDED (38)
+
+Training Random Forest...
+  (selected on training side: EXTENDED, max_depth=12, min_samples_leaf=10; 12 candidates, 92s)
+  Accuracy          : 0.8396
+  Balanced Accuracy : 0.5736
+  Macro F1          : 0.5650
+  Critical Recall   : 0.0000
+  !! UNSAFE: misses every Critical second (Critical recall = 0)
+
+Training XGBoost...
+  (selected on training side: EXTENDED, max_depth=3, learning_rate=0.1; 12 candidates, 86s)
+  Accuracy          : 0.8718
+  Balanced Accuracy : 0.6026
+  Macro F1          : 0.6062
+  Critical Recall   : 0.0308
+  !! POOR Critical detection (Critical recall 0.031 < 0.50)
+
+Training SVM...
+  (selected on training side: EXTENDED, C=0.3; 9 candidates, 73s)
+  Accuracy          : 0.8311
+  Balanced Accuracy : 0.5688
+  Macro F1          : 0.5590
+  Critical Recall   : 0.0000
+  !! UNSAFE: misses every Critical second (Critical recall = 0)
+
+Training Logistic Regression...
+  (selected on training side: TEMPORAL_PERSONALIZED, C=0.01; 9 candidates, 7s)
+  Accuracy          : 0.7550
+  Balanced Accuracy : 0.5116
+  Macro F1          : 0.5089
+  Critical Recall   : 0.0000
+  !! UNSAFE: misses every Critical second (Critical recall = 0)
+
+============================================================
+MODEL COMPARISON  (experiment 3, test = W_002)
+============================================================
+              Model Feature Set  Accuracy  Balanced Accuracy  Macro Precision  Macro Recall  Macro F1  Weighted F1  Critical Precision  Critical Recall  Critical F1  Critical-to-Safe Count
+      Random Forest    EXTENDED    0.8396             0.5736           0.5706        0.5736    0.5650       0.8316              0.0000           0.0000       0.0000                       0
+            XGBoost    EXTENDED    0.8718             0.6026           0.9146        0.6026    0.6062       0.8646              1.0000           0.0308       0.0597                       0
+                SVM    EXTENDED    0.8311             0.5688           0.5718        0.5688    0.5590       0.8225              0.0000           0.0000       0.0000                       0
+Logistic Regression    TEMPORAL    0.7550             0.5116           0.5066        0.5116    0.5089       0.7504              0.0000           0.0000       0.0000                       0
+Feature sets: BASIC = BASIC_PERSONALIZED (11), TEMPORAL = TEMPORAL_PERSONALIZED (26), EXTENDED (38)
+  !! Random Forest: UNSAFE: misses every Critical second (Critical recall = 0)
+  !! XGBoost: POOR Critical detection (Critical recall 0.031 < 0.50)
+  !! SVM: UNSAFE: misses every Critical second (Critical recall = 0)
+  !! Logistic Regression: UNSAFE: misses every Critical second (Critical recall = 0)
+
+============================================================
+DETAILED CLASSIFICATION REPORTS  (experiment 3)
+============================================================
+
+--- Random Forest (EXTENDED) ---
+              precision    recall  f1-score   support
+
+        Safe     0.9507    0.7644    0.8474      7114
+     Warning     0.7611    0.9563    0.8476      6451
+    Critical     0.0000    0.0000    0.0000       260
+
+    accuracy                         0.8396     13825
+   macro avg     0.5706    0.5736    0.5650     13825
+weighted avg     0.8444    0.8396    0.8316     13825
+
+Confusion matrix (rows = true, columns = predicted: Safe, Warning, Critical)
+  Safe        5,438   1,676       0
+  Warning       282   6,169       0
+  Critical        0     260       0
+
+--- XGBoost (EXTENDED) ---
+              precision    recall  f1-score   support
+
+        Safe     0.9069    0.8762    0.8913      7114
+     Warning     0.8368    0.9008    0.8676      6451
+    Critical     1.0000    0.0308    0.0597       260
+
+    accuracy                         0.8718     13825
+   macro avg     0.9146    0.6026    0.6062     13825
+weighted avg     0.8759    0.8718    0.8646     13825
+
+Confusion matrix (rows = true, columns = predicted: Safe, Warning, Critical)
+  Safe        6,233     881       0
+  Warning       640   5,811       0
+  Critical        0     252       8
+
+--- SVM (EXTENDED) ---
+              precision    recall  f1-score   support
+
+        Safe     0.9735    0.7281    0.8331      7114
+     Warning     0.7420    0.9781    0.8439      6451
+    Critical     0.0000    0.0000    0.0000       260
+
+    accuracy                         0.8311     13825
+   macro avg     0.5718    0.5688    0.5590     13825
+weighted avg     0.8472    0.8311    0.8225     13825
+
+Confusion matrix (rows = true, columns = predicted: Safe, Warning, Critical)
+  Safe        5,180   1,934       0
+  Warning       141   6,310       0
+  Critical        0     260       0
+
+--- Logistic Regression (TEMPORAL_PERSONALIZED) ---
+              precision    recall  f1-score   support
+
+        Safe     0.7738    0.8104    0.7917      7114
+     Warning     0.7460    0.7244    0.7350      6451
+    Critical     0.0000    0.0000    0.0000       260
+
+    accuracy                         0.7550     13825
+   macro avg     0.5066    0.5116    0.5089     13825
+weighted avg     0.7463    0.7550    0.7504     13825
+
+Confusion matrix (rows = true, columns = predicted: Safe, Warning, Critical)
+  Safe        5,765   1,331      18
+  Warning     1,685   4,673      93
+  Critical        0     260       0
+
+============================================================
+FINAL THREE-EXPERIMENT COMPARISON
+============================================================
+                              Experiment          Best Model Feature Set  Accuracy  Balanced Accuracy  Macro F1  Critical Recall  Critical F1  Critical-to-Safe Count
+           1: Synthetic -> Worker 1 Real Logistic Regression    EXTENDED    0.7046             0.8529    0.6807           1.0000       0.4108                       0
+2: Synthetic + Worker 1 -> Worker 2 Real Logistic Regression    EXTENDED    0.9092             0.6177    0.6148           0.0000       0.0000                       0
+            3: Worker 1 -> Worker 2 Real             XGBoost    EXTENDED    0.8718             0.6026    0.6062           0.0308       0.0597                       0
+  !! Experiment 2 best model Logistic Regression: UNSAFE: misses every Critical second (Critical recall = 0)
+  !! Experiment 3 best model XGBoost: POOR Critical detection (Critical recall 0.031 < 0.50)
+
+'Best Model' = best of the four on the experiment's test worker (safety-gated, descriptive only).
+Production model (models/best_model.pkl) was NOT changed.
+
+Results: outputs/experiment_results.csv, outputs/final_experiment_summary.csv, outputs/feature_set_comparison.csv, outputs/EXPERIMENT_RESULTS.md
+Models:  models/experiments/  (12 files)
+Total time: 21.0 min

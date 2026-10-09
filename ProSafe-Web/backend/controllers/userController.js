@@ -7,6 +7,7 @@ const userService = require("../services/userService");
 const notificationService = require("../services/notificationService");
 const helmetService = require("../services/helmetService");
 const dashboardService = require("../services/dashboardService");
+const { statusFields } = require("../services/operationalStateService");
 
 const PROFILE_IMAGE_BASE = "/uploads/profile-images";
 
@@ -46,8 +47,7 @@ async function buildWorkerOperationalData(user) {
 
   return {
     helmet: { helmetId: user.helmetId },
-    currentRiskState: state ? state.currentRiskState : null,
-    emergencyActive: state ? state.emergencyActive : false,
+    ...statusFields(state),
     online: helmetService.isRecentEnoughToBeOnline(lastSeenAt),
     lastSeenAt,
     location: locationMap.get(user.helmetId) || null,
@@ -190,8 +190,11 @@ exports.createUser = async (req, res, next) => {
     const { name, email, nic, phone, address, role, password, helmetId } = req.body;
 
     const { valid, errors } = userService.validateUserFields({ name, email, nic, phone, role, password });
-    if (!valid) {
-      return res.status(400).json({ message: "Validation failed", errors });
+    // Baselines only for WORKER; optional (left empty = not measured yet ->
+    // the system reports UNCERTAIN / BASELINE_UNAVAILABLE), never defaulted.
+    const baselines = userService.validateBaselines(req.body, { role });
+    if (!valid || !baselines.valid) {
+      return res.status(400).json({ message: "Validation failed", errors: { ...errors, ...baselines.errors } });
     }
 
     const conflicts = await userService.findConflicts({ email, nic });
@@ -219,6 +222,8 @@ exports.createUser = async (req, res, next) => {
       role,
       profileImageUrl,
       helmetId: role === USER_ROLES.WORKER ? (helmetId || null) : null,
+      baselineHeartRate: baselines.values.baselineHeartRate,
+      baselineBodyTemperature: baselines.values.baselineBodyTemperature,
       createdBy: req.user.id,
     });
 
@@ -259,8 +264,16 @@ exports.updateUser = async (req, res, next) => {
       { name, email, nic, phone, role, password },
       { isUpdate: true }
     );
-    if (!valid) {
-      return res.status(400).json({ message: "Validation failed", errors });
+    // Role change WORKER -> ADMIN clears the baselines; a WORKER keeps the
+    // stored values unless new ones (or an explicit clear) are sent. A
+    // changed baseline makes ProSafe ML V2 restart that worker's session.
+    const baselines = userService.validateBaselines(req.body, {
+      role: nextRole,
+      isUpdate: true,
+      current: { baselineHeartRate: user.baselineHeartRate, baselineBodyTemperature: user.baselineBodyTemperature },
+    });
+    if (!valid || !baselines.valid) {
+      return res.status(400).json({ message: "Validation failed", errors: { ...errors, ...baselines.errors } });
     }
 
     const conflicts = await userService.findConflicts({ email, nic, excludeUserId: user.userId });
@@ -293,6 +306,8 @@ exports.updateUser = async (req, res, next) => {
     if (address !== undefined) user.address = address || null;
     if (role !== undefined) user.role = role;
     user.helmetId = nextHelmetId;
+    user.baselineHeartRate = baselines.values.baselineHeartRate;
+    user.baselineBodyTemperature = baselines.values.baselineBodyTemperature;
 
     if (password) {
       user.passwordHash = await bcrypt.hash(password, 10);

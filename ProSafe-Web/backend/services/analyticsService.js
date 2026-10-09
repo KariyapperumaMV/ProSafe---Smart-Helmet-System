@@ -5,7 +5,7 @@ const User = require("../models/User");
 const { USER_ROLES } = require("../constants/roles");
 const { RISK_STATES } = require("../constants/riskStates");
 const { timezone } = require("../config/appConfig");
-const { exposure: exposureConfig } = require("../config/processingConfig");
+const { exposure: exposureConfig, ingest: ingestConfig } = require("../config/processingConfig");
 const analyticsConfig = require("../config/analyticsConfig");
 const sensorRanges = require("../config/sensorRanges");
 const helmetService = require("./helmetService");
@@ -326,7 +326,8 @@ async function getSingleHealthMetric(start, end, fieldPath, thresholdPct) {
 
 // "Longest continuous abnormal exposure streak" = MAX(processed.*ExposureDuration)
 // per worker. These fields are cumulative-within-a-streak and reset to 0
-// when the abnormal condition clears (see exposureService.js), so the max
+// when the abnormal condition clears (ProSafe ML V2 exposure counters
+// noise_critical_exposure_sec / hr_warning_exposure_sec), so the max
 // value observed IS that streak's true duration — correct by construction,
 // with no risk of double-counting. This is deliberately NOT a sum (that
 // would multiply-count every streak) and is labeled as a streak length, not
@@ -372,7 +373,7 @@ async function getHelmetReliability(start, end) {
   const packetCountMap = new Map(packetCountRows.map((r) => [r._id, r.count]));
 
   const now = new Date();
-  const expectedIntervalSeconds = exposureConfig.defaultPacketIntervalSeconds; // 60s — same constant the pipeline itself uses
+  const expectedIntervalSeconds = ingestConfig.sampleIntervalSeconds; // 1 s — the helmet's sampling period (one HelmetData per sample)
 
   const coverage = activeHelmets.map((h) => {
     const windowStart = h.createdAt && h.createdAt > start ? h.createdAt : start;

@@ -1,5 +1,6 @@
 import { Modal } from "../ui/Modal";
 import { StatusBadge } from "../ui/StatusBadge";
+import { describeUncertainReason } from "../../constants/uncertainReasons";
 import { formatRelativeTime } from "../../utils/formatRelativeTime";
 
 const SENSOR_LABELS = {
@@ -7,7 +8,7 @@ const SENSOR_LABELS = {
   bodyTemp: { label: "Body Temperature", unit: "°C" },
   ambientTemp: { label: "Ambient Temp", unit: "°C" },
   noise: { label: "Noise", unit: "dB" },
-  gas: { label: "Gas", unit: "ppm" },
+  gas: { label: "Gas", unit: "units" }, // uncalibrated sensor units, not ppm
   uv: { label: "UV", unit: "" },
 };
 
@@ -21,7 +22,9 @@ export function AlertDetailModal({ open, onClose, alert }) {
     <Modal open={open} onClose={onClose} title="Alert Details" width={480}>
       <div className="ps-sensor-modal-body">
         <div className="ps-alert-detail-header">
-          <StatusBadge tone={alert.type === "EMERGENCY" ? "danger" : "neutral"}>{alert.type}</StatusBadge>
+          <StatusBadge tone={alert.type === "EMERGENCY" ? "danger" : alert.type === "DATA_QUALITY" ? "uncertain" : "neutral"}>
+            {alert.type === "DATA_QUALITY" ? "DATA QUALITY" : alert.type}
+          </StatusBadge>
           <span className="ps-help-text">{formatRelativeTime(alert.timestamp)}</span>
         </div>
 
@@ -44,7 +47,16 @@ export function AlertDetailModal({ open, onClose, alert }) {
             <div>
               <dt>Risk change</dt>
               <dd>
-                {alert.previousRiskState} → {alert.currentRiskState}
+                {alert.previousRiskState ? `${alert.previousRiskState} → ${alert.currentRiskState}` : alert.currentRiskState}
+              </dd>
+            </div>
+          )}
+          {alert.type === "DATA_QUALITY" && (
+            <div>
+              <dt>Reason</dt>
+              <dd>
+                {describeUncertainReason(alert.dataQualityReason)}
+                {alert.uncertainSince ? ` — since ${new Date(alert.uncertainSince).toLocaleString()}` : ""}
               </dd>
             </div>
           )}

@@ -300,10 +300,12 @@ describe("analyticsService — helmet reliability", () => {
 
     await makePacket({ helmetId: "PS-A", workerId: "W-A", timestamp: hoursFrom(week.start, 1) });
     await makePacket({ helmetId: "PS-B", workerId: "W-B", timestamp: hoursFrom(week.start, 2) });
-    // 8 packets within PS-NEW's 10-minute window -> expected 10, actual 8 -> 80%.
-    for (let i = 0; i < 8; i++) {
-      await makePacket({ helmetId: "PS-NEW", workerId: "W-D", timestamp: new Date(tenMinBeforeEnd.getTime() + i * 60 * 1000) });
-    }
+    // 1 Hz samples: 480 samples within PS-NEW's 10-minute window -> expected 600, actual 480 -> 80%.
+    await HelmetData.insertMany(
+      Array.from({ length: 480 }, (_, i) => ({
+        helmetId: "PS-NEW", workerId: "W-D", timestamp: new Date(tenMinBeforeEnd.getTime() + i * 1000),
+      }))
+    );
 
     const result = await analyticsService.computeAnalytics("weekly", week.weekStart);
     const rel = result.helmetReliability;
@@ -312,8 +314,8 @@ describe("analyticsService — helmet reliability", () => {
     expect(rel.noDataDuringPeriod).toEqual(["PS-NO-DATA"]);
 
     const psNew = rel.reportingCoverage.find((c) => c.helmetId === "PS-NEW");
-    expect(psNew.expectedPackets).toBe(10);
-    expect(psNew.actualPackets).toBe(8);
+    expect(psNew.expectedPackets).toBe(600);
+    expect(psNew.actualPackets).toBe(480);
     expect(psNew.coveragePercent).toBe(80);
 
     const psNoData = rel.reportingCoverage.find((c) => c.helmetId === "PS-NO-DATA");

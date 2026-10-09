@@ -26,6 +26,9 @@ export function AddUserPage() {
           address: values.address,
           password: values.password,
           helmetId: values.helmetId || "",
+          // Worker-only; "" clears (and is what an Admin always sends).
+          baselineHeartRate: values.role === "WORKER" ? values.baselineHeartRate : "",
+          baselineBodyTemperature: values.role === "WORKER" ? values.baselineBodyTemperature : "",
         },
         imageFile
       );

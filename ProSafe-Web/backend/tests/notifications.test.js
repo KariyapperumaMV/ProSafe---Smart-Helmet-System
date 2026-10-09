@@ -18,6 +18,19 @@ function isoNow() {
   return new Date().toISOString();
 }
 
+// One READY ProSafe ML V2 decision per reading (mlService.runRawBatch is mocked).
+function mockV2Ready(state, confidence = 0.95) {
+  mlService.runRawBatch.mockImplementation(async (readings) => ({
+    ok: true,
+    results: readings.map(() => ({
+      systemState: state, modelReady: true, predictedState: state, confidence,
+      probabilities: { SAFE: 0, WARNING: 0, CRITICAL: 0, [state]: confidence },
+      dataQuality: "VALID", uncertainReason: null, derived: null,
+      modelName: "XGBoost", modelVersion: "test", featureSet: "EXTENDED", sessionId: "S-1",
+    })),
+  }));
+}
+
 async function makeNotification(recipientUserId, overrides = {}) {
   return Notification.create({
     recipientUserId,
@@ -307,9 +320,7 @@ describe("Notification generation — transition alert (ML mocked)", () => {
       baselineHeartRate: 70, baselineBodyTemperature: 36.5,
     });
 
-    mlService.runPrediction.mockResolvedValue({
-      ok: true, predictedState: "WARNING", confidence: 0.95, probabilities: { WARNING: 0.95 },
-    });
+    mockV2Ready("WARNING");
 
     const result = await processPacket({
       helmetId: "PS-H-TRANS-N",
@@ -331,9 +342,7 @@ describe("Notification generation — transition alert (ML mocked)", () => {
       baselineHeartRate: 70, baselineBodyTemperature: 36.5,
     });
 
-    mlService.runPrediction.mockResolvedValue({
-      ok: true, predictedState: "WARNING", confidence: 0.95, probabilities: { WARNING: 0.95 },
-    });
+    mockV2Ready("WARNING");
 
     const packet = {
       helmetId: "PS-H-TRANS-DUP",
@@ -341,7 +350,7 @@ describe("Notification generation — transition alert (ML mocked)", () => {
       heartRate: 95, bodyTemp: 37.2, ambientTemp: 30, noise: 80, gas: 100, uv: 4,
     };
     const first = await processPacket(packet);
-    const second = await processPacket({ ...packet, timestamp: isoNow() }); // same predicted state again
+    const second = await processPacket({ ...packet, timestamp: new Date(Date.now() + 1000).toISOString() }); // same predicted state again
 
     expect(first.responseBody.stateChanged).toBe(true);
     expect(second.responseBody.stateChanged).toBe(false); // no new transition
@@ -359,9 +368,7 @@ describe("Notification generation — transition alert (ML mocked)", () => {
       role: "WORKER", helmetId: "PS-H-TRANS-FAIL",
       baselineHeartRate: 70, baselineBodyTemperature: 36.5,
     });
-    mlService.runPrediction.mockResolvedValue({
-      ok: true, predictedState: "CRITICAL", confidence: 0.95, probabilities: { CRITICAL: 0.95 },
-    });
+    mockV2Ready("CRITICAL");
 
     const createSpy = jest.spyOn(Notification, "create").mockRejectedValue(new Error("boom"));
 

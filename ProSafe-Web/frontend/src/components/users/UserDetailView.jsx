@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { UserAvatar } from "../ui/UserAvatar";
-import { RoleBadge, RiskBadge } from "../ui/StatusBadge";
+import { RoleBadge, OperationalStatus } from "../ui/StatusBadge";
 import { GlassCard } from "../ui/GlassCard";
 import { EmptyState } from "../ui/EmptyState";
 import { SensorCard } from "../ui/SensorCard";
@@ -19,7 +19,7 @@ const SENSOR_DEFS = [
   { key: "bodyTemp", label: "Body Temperature", icon: "🌡", unit: "°C", modal: { type: "personalized", sensor: "bodyTemperature" } },
   { key: "ambientTemp", label: "Ambient Temp", icon: "🌤", unit: "°C", modal: { type: "environmental", sensor: "ambientTemperature" } },
   { key: "noise", label: "Noise", icon: "🔊", unit: "dB", modal: { type: "environmental", sensor: "noise" } },
-  { key: "gas", label: "Gas (PPM)", icon: "☁", unit: "ppm", modal: { type: "environmental", sensor: "gas" } },
+  { key: "gas", label: "Gas", icon: "☁", unit: "units", modal: { type: "environmental", sensor: "gas" } }, // uncalibrated, not ppm
   { key: "uv", label: "UV Light", icon: "☀", unit: "", modal: { type: "environmental", sensor: "uv" } },
 ];
 
@@ -27,7 +27,7 @@ const SENSOR_DEFS = [
 // doc's own note) plus current risk state, only when a helmet is assigned
 // and the pipeline has produced data. Admin view never shows any of this.
 export function UserDetailView({ data, actions }) {
-  const { user, currentRiskState, emergencyActive, latestSensorData, online, lastSeenAt, location } = data;
+  const { user, emergencyActive, latestSensorData, online, lastSeenAt, location } = data;
   const isWorker = user.role === USER_ROLES.WORKER;
   const [activeModal, setActiveModal] = useState(null); // { type, sensor } | { type: "prediction" } | null
 
@@ -48,7 +48,7 @@ export function UserDetailView({ data, actions }) {
             {emergencyActive ? (
               <span className="ps-badge ps-badge-danger">Emergency Active</span>
             ) : (
-              <RiskBadge state={currentRiskState} />
+              <OperationalStatus status={data} />
             )}
           </button>
         )}
@@ -78,6 +78,18 @@ export function UserDetailView({ data, actions }) {
             <div>
               <dt>Helmet</dt>
               <dd>{user.helmetId || "Not Assigned"}</dd>
+            </div>
+          )}
+          {isWorker && (
+            <div>
+              <dt>Baseline Heart Rate</dt>
+              <dd>{user.baselineHeartRate != null ? `${user.baselineHeartRate} BPM` : "Not set"}</dd>
+            </div>
+          )}
+          {isWorker && (
+            <div>
+              <dt>Baseline Body Temp</dt>
+              <dd>{user.baselineBodyTemperature != null ? `${user.baselineBodyTemperature} °C` : "Not set"}</dd>
             </div>
           )}
         </dl>

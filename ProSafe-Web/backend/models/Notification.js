@@ -11,6 +11,9 @@ const NOTIFICATION_TYPES = [
   "EMERGENCY_RESET_REQUESTED",
   "EMERGENCY_RESOLVED",
   "USER_CREATED",
+  // Persistent UNCERTAIN (no trustworthy risk decision) for a worker — see
+  // sensorProcessingService's DATA_QUALITY alert rule.
+  "DATA_QUALITY_ALERT",
   // Defined for future Analytics/report generation — never instantiated yet.
   "DAILY_REPORT_READY",
   "WEEKLY_REPORT_READY",

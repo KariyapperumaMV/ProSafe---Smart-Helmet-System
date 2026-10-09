@@ -4,8 +4,8 @@ const HelmetData = require("../models/HelmetData");
 const Alert = require("../models/Alert");
 const WorkerProcessingState = require("../models/WorkerProcessingState");
 const { USER_ROLES } = require("../constants/roles");
-const { RISK_STATES } = require("../constants/riskStates");
 const { timezone, dashboardAlertWindowDays } = require("../config/appConfig");
+const { computeOperationalState, statusFields, STATUS_PROJECTION } = require("./operationalStateService");
 const helmetService = require("./helmetService");
 const weatherService = require("./weatherService");
 const alertService = require("./alertService");
@@ -13,37 +13,32 @@ const alertService = require("./alertService");
 const RECENT_ALERTS_LIMIT = 10;
 const WORKER_RECENT_ALERTS_LIMIT = 5;
 
-// Mutually exclusive by construction: EMERGENCY is checked before any risk
-// state, a missing WorkerProcessingState is UNKNOWN (never defaulted to
-// SAFE), so every active worker lands in exactly one bucket (#7).
+// Mutually exclusive by construction: every active worker lands in exactly
+// one bucket of operationalStateService.computeOperationalState (#7) —
+// EMERGENCY first, a confirmed WARNING/CRITICAL is never hidden by uncertain
+// data, UNCERTAIN when the latest data can't support a decision, UNKNOWN when
+// there is no processing state at all (never defaulted to SAFE).
+const OPERATIONAL_TO_BUCKET = {
+  EMERGENCY: "emergency",
+  SAFE: "safe",
+  WARNING: "warning",
+  CRITICAL: "critical",
+  UNCERTAIN: "uncertain",
+  UNKNOWN: "unknown",
+};
+
 async function getWorkerStatusCounts() {
   const workers = await User.find({ role: USER_ROLES.WORKER, active: true }, "userId").lean();
   const workerIds = workers.map((w) => w.userId);
-  const counts = { total: workerIds.length, safe: 0, warning: 0, critical: 0, emergency: 0, unknown: 0 };
+  const counts = { total: workerIds.length, safe: 0, warning: 0, critical: 0, emergency: 0, uncertain: 0, unknown: 0 };
 
   if (!workerIds.length) return counts;
 
-  const states = await WorkerProcessingState.find(
-    { workerId: { $in: workerIds } },
-    "workerId currentRiskState emergencyActive"
-  ).lean();
+  const states = await WorkerProcessingState.find({ workerId: { $in: workerIds } }, STATUS_PROJECTION).lean();
   const stateMap = new Map(states.map((s) => [s.workerId, s]));
 
   for (const workerId of workerIds) {
-    const state = stateMap.get(workerId);
-    if (!state) {
-      counts.unknown += 1;
-    } else if (state.emergencyActive) {
-      counts.emergency += 1;
-    } else if (state.currentRiskState === RISK_STATES.SAFE) {
-      counts.safe += 1;
-    } else if (state.currentRiskState === RISK_STATES.WARNING) {
-      counts.warning += 1;
-    } else if (state.currentRiskState === RISK_STATES.CRITICAL) {
-      counts.critical += 1;
-    } else {
-      counts.unknown += 1;
-    }
+    counts[OPERATIONAL_TO_BUCKET[computeOperationalState(stateMap.get(workerId))] || "unknown"] += 1;
   }
 
   return counts;
@@ -163,7 +158,7 @@ async function getWorkerLocationMap() {
   const [lastSeenMap, lastLocationMap, states] = await Promise.all([
     helmetService.getLastSeenMap(relevantHelmetIds),
     getLastValidLocationMap(relevantHelmetIds),
-    WorkerProcessingState.find({ workerId: { $in: relevantWorkerIds } }, "workerId currentRiskState emergencyActive").lean(),
+    WorkerProcessingState.find({ workerId: { $in: relevantWorkerIds } }, STATUS_PROJECTION).lean(),
   ]);
   const stateMap = new Map(states.map((s) => [s.workerId, s]));
 
@@ -174,9 +169,9 @@ async function getWorkerLocationMap() {
 
     const lastSeenAt = lastSeenMap.get(worker.helmetId) || null;
     const state = stateMap.get(worker.userId);
-    // Same rule as the worker dashboard's own operationalState (#18/#24) —
-    // emergency always overrides the ML risk state, never defaulted to SAFE.
-    const operationalState = state ? (state.emergencyActive ? "EMERGENCY" : state.currentRiskState || "UNKNOWN") : "UNKNOWN";
+    // Same rule as every other view (operationalStateService) — emergency
+    // always overrides, never defaulted to SAFE.
+    const { operationalState, uncertainReason } = statusFields(state);
 
     locations.push({
       userId: worker.userId,
@@ -188,6 +183,7 @@ async function getWorkerLocationMap() {
       lastSeenAt,
       locationTimestamp: location.locationTimestamp,
       operationalState,
+      uncertainReason,
     });
   }
 
@@ -237,11 +233,8 @@ async function getWorkerDashboard(userId) {
     weatherService.getWeather(),
   ]);
 
-  const emergencyActive = state ? state.emergencyActive : false;
-  const currentRiskState = state ? state.currentRiskState : null;
-  // Never defaults to SAFE — a worker with no processing state yet is
-  // UNKNOWN, exactly the same rule as the admin worker-status counts (#18).
-  const operationalState = emergencyActive ? "EMERGENCY" : currentRiskState || "UNKNOWN";
+  // Never defaults to SAFE — same rule as the admin worker-status counts (#18).
+  const status = statusFields(state);
 
   let helmet = null;
   if (user.helmetId) {
@@ -255,7 +248,7 @@ async function getWorkerDashboard(userId) {
     status: 200,
     body: {
       user: { userId: user.userId, name: user.name },
-      status: { operationalState, currentRiskState, emergencyActive },
+      status,
       helmet,
       latestSensors: latestPacket
         ? {

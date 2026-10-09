@@ -1,0 +1,77 @@
+                              feature          category  min_seconds_into_run  rows_compared  rows_matching  match_rate  max_abs_diff  offline_nan_online_value  online_nan_offline_value
+0                 ambient_temperature        raw sensor                     0          39464          39464    1.000000  0.000000e+00                        16                         0
+1                            uv_index        raw sensor                     0          39369          39369    1.000000  0.000000e+00                        97                         0
+2                                 gas        raw sensor                     0          39392          39392    1.000000  0.000000e+00                        79                         0
+3                               noise        raw sensor                     0          39465          39465    1.000000  0.000000e+00                        13                         0
+4                    body_temperature        raw sensor                     0          39480          39480    1.000000  0.000000e+00                         0                         0
+5                          heart_rate        raw sensor                     0          39480          39480    1.000000  0.000000e+00                         0                         0
+6                    hr_deviation_bpm         deviation                     0          39480          39480    1.000000  1.776357e-15                         0                         0
+7                    hr_deviation_pct         deviation                     0          39480          39480    1.000000  4.942529e-05                         0                         0
+8               body_temp_deviation_c         deviation                     0          39480          39480    1.000000  6.827872e-15                         0                         0
+9             body_temp_deviation_pct         deviation                     0          39480          39480    1.000000  4.994524e-05                         0                         0
+10              gas_ratio_to_baseline         gas ratio                     0          39392          39392    1.000000  4.939759e-05                        79                         0
+11        heart_rate_rolling_mean_30s           rolling                    29          37392          37392    1.000000  3.333333e-05                         0                         0
+12        heart_rate_rolling_mean_60s           rolling                    59          35232          35232    1.000000  5.000000e-05                         0                         0
+13         heart_rate_rolling_std_60s           rolling                    59          35232          35232    1.000000  4.999802e-05                         0                         0
+14        body_temp_rolling_mean_300s           rolling                   299          21046          21046    1.000000  5.000000e-05                         0                         0
+15     ambient_temp_rolling_mean_300s           rolling                   299          21046          21046    1.000000  5.000000e-05                         0                         0
+16               uv_rolling_mean_300s           rolling                   299          21046          21046    1.000000  5.000000e-05                         0                         0
+17               gas_rolling_mean_30s           rolling                    29          37392          37392    1.000000  4.827586e-05                         0                         0
+18             noise_rolling_mean_60s           rolling                    59          35232          35232    1.000000  4.905660e-05                         0                         0
+19           hr_trend_60s_bpm_per_min             trend                    59          35232          35232    1.000000  5.000000e-05                         0                         0
+20     body_temp_trend_300s_c_per_min             trend                   299          21046          21046    1.000000  5.000000e-05                         0                         0
+21  ambient_temp_trend_300s_c_per_min             trend                   299          21046          21046    1.000000  5.000000e-05                         0                         0
+22              uv_trend_300s_per_min             trend                   299          21046          21046    1.000000  5.000000e-05                         0                         0
+23              gas_trend_60s_per_min             trend                    59          35232          35232    1.000000  5.000000e-05                         0                         0
+24         noise_trend_60s_db_per_min             trend                    59          35232          35232    1.000000  3.552714e-14                         0                         0
+25                     noise_dose_pct        noise dose                    60          35160          35160    1.000000  9.403173e-05                         0                         0
+26          temp_warning_exposure_sec  exposure counter                    60          35160          35159    0.999972  1.700000e+01                         0                         0
+27         temp_critical_exposure_sec  exposure counter                    60          35160          35160    1.000000  0.000000e+00                         0                         0
+28            uv_warning_exposure_sec  exposure counter                    60          35160          35017    0.995933  4.040000e+02                         0                         0
+29           uv_critical_exposure_sec  exposure counter                    60          35160          35080    0.997725  3.000000e+00                         0                         0
+30           gas_warning_exposure_sec  exposure counter                    60          35160          35160    1.000000  0.000000e+00                         0                         0
+31          gas_critical_exposure_sec  exposure counter                    60          35160          35160    1.000000  0.000000e+00                         0                         0
+32         noise_warning_exposure_sec  exposure counter                    60          35160          35160    1.000000  0.000000e+00                         0                         0
+33        noise_critical_exposure_sec  exposure counter                    60          35160          35160    1.000000  0.000000e+00                         0                         0
+34            hr_warning_exposure_sec  exposure counter                    60          35160          35160    1.000000  0.000000e+00                         0                         0
+35           hr_critical_exposure_sec  exposure counter                    60          35160          35160    1.000000  0.000000e+00                         0                         0
+36     body_temp_warning_exposure_sec  exposure counter                    60          35160          35091    0.998038  8.000000e+00                         0                         0
+37    body_temp_critical_exposure_sec  exposure counter                    60          35160          35160    1.000000  0.000000e+00                         0                         0
+                                                          0         1         2         3         4         5
+worker_id                                             S_001     S_002     S_003     S_004     W_001     W_002
+rows                                                   4559      4668      4706      4631     14015     13825
+online_READY                                           4215      4363      4458      4341     13645     13308
+online_UNCERTAIN                                        344       305       248       290       370       517
+uncertain_reason:SENSOR_WARMUP                          178       180       180       180       180       180
+uncertain_reason:MAJOR_TIMESTAMP_GAP                    131       114        57        95       171       285
+uncertain_reason:PACKET_LOSS                           30.0      10.0      10.0      10.0       0.0      20.0
+uncertain_reason:SENSOR_UNAVAILABLE                     5.0       1.0       1.0       5.0       0.0      13.0
+gas_ratio_to_baseline:share_within_1e-4                 0.0       0.0       0.0       0.0   0.50551  0.504892
+gas_ratio_to_baseline:max_abs_diff                  0.02113  0.016342  0.038835    0.2265  0.186277  0.147775
+temp_warning_exposure_sec:share_within_1e-4        0.904389  0.863168       0.0  0.871689  0.471455  0.998422
+temp_warning_exposure_sec:max_abs_diff                 33.0      22.0     213.0       8.0      16.0      28.0
+temp_critical_exposure_sec:share_within_1e-4       0.960142       1.0       1.0       1.0       1.0       1.0
+temp_critical_exposure_sec:max_abs_diff                 7.0       0.0       0.0       0.0       0.0       0.0
+uv_warning_exposure_sec:share_within_1e-4          0.892764  0.979601  0.947734  0.855563  0.956687  0.844154
+uv_warning_exposure_sec:max_abs_diff                   60.0      28.0     227.0      27.0     192.0    1814.0
+uv_critical_exposure_sec:share_within_1e-4         0.969158       1.0  0.999551       1.0  0.984903  0.974451
+uv_critical_exposure_sec:max_abs_diff                   4.0       0.0      53.0       0.0     311.0      18.0
+gas_warning_exposure_sec:share_within_1e-4              1.0  0.989915       1.0  0.984566  0.999707  0.990156
+gas_warning_exposure_sec:max_abs_diff                   0.0      82.0       0.0     170.0      91.0     101.0
+gas_critical_exposure_sec:share_within_1e-4             1.0       1.0       1.0       1.0  0.999927  0.999023
+gas_critical_exposure_sec:max_abs_diff                  0.0       0.0       0.0       0.0       7.0       9.0
+noise_warning_exposure_sec:share_within_1e-4            1.0       1.0  0.997981       1.0  0.998681  0.999173
+noise_warning_exposure_sec:max_abs_diff                 0.0       0.0      70.0       0.0      16.0      12.0
+noise_critical_exposure_sec:share_within_1e-4           1.0       1.0  0.997981       1.0  0.998974  0.999699
+noise_critical_exposure_sec:max_abs_diff                0.0       0.0      70.0       0.0      16.0      12.0
+hr_warning_exposure_sec:share_within_1e-4          0.921708       1.0  0.983849       1.0  0.971638  0.880673
+hr_warning_exposure_sec:max_abs_diff                   22.0       0.0      46.0       0.0      18.0     892.0
+hr_critical_exposure_sec:share_within_1e-4              1.0       1.0  0.971288       1.0   0.99956       1.0
+hr_critical_exposure_sec:max_abs_diff                   0.0       0.0       6.0       0.0       5.0       0.0
+body_temp_warning_exposure_sec:share_within_1e-4   0.984104       1.0  0.997308       1.0  0.999853       1.0
+body_temp_warning_exposure_sec:max_abs_diff             1.0       0.0       6.0       0.0       8.0       0.0
+body_temp_critical_exposure_sec:share_within_1e-4       1.0       1.0       1.0       1.0       1.0       1.0
+body_temp_critical_exposure_sec:max_abs_diff            0.0       0.0       0.0       0.0       0.0       0.0
+noise_dose_pct:share_within_1e-4                        0.0       1.0  0.023777       0.0  0.391792  0.448527
+noise_dose_pct:max_abs_diff                        2.495307   0.00005  0.234533  0.039334  1.174743  0.010822
+uncertain_reason:INSUFFICIENT_HISTORY                   0.0       0.0       0.0       0.0      19.0      19.0

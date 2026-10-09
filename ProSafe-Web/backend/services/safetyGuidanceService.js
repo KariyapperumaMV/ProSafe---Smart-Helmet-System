@@ -7,6 +7,8 @@ const sensorRanges = require("../config/sensorRanges");
 const processingConfig = require("../config/processingConfig");
 const { calculatePhysiologicalDeviations } = require("./deviationService");
 const helmetService = require("./helmetService");
+const { effectiveRiskState, statusFields } = require("./operationalStateService");
+const { describeDataQualityReason } = require("./alertService");
 const rules = require("../config/guidanceRules");
 
 const ENV_SENSOR_RAW_FIELD = {
@@ -144,7 +146,12 @@ function severityRank(factor) {
 // still presents as CRITICAL, and ML CRITICAL + all-SAFE environment
 // still presents as CRITICAL even though no environmental factor exists
 // to explain it.
-function computeOperationalState({ emergencyActive, mlRiskState, factors }) {
+//
+// mlRiskState here is the EFFECTIVE ML risk (operationalStateService): null
+// when the latest data are UNCERTAIN and no elevated state is confirmed, so an
+// uncertain worker is shown as UNCERTAIN (or by an elevated environmental
+// factor) and never as SAFE.
+function computeOperationalState({ emergencyActive, mlRiskState, factors, dataUncertain = false }) {
   if (emergencyActive) return "EMERGENCY";
 
   let best = mlRiskState ? RISK_RANK[mlRiskState] || 0 : 0;
@@ -153,7 +160,7 @@ function computeOperationalState({ emergencyActive, mlRiskState, factors }) {
       best = Math.max(best, RISK_RANK[factor.severity]);
     }
   }
-  if (best === 0) return "UNKNOWN";
+  if (best === 0) return dataUncertain ? "UNCERTAIN" : "UNKNOWN";
   if (best === 3) return RISK_STATES.CRITICAL;
   if (best === 2) return RISK_STATES.WARNING;
   return RISK_STATES.SAFE;
@@ -178,7 +185,7 @@ function dedupeAndRankActions(candidates) {
     .map(({ priority, text }) => ({ priority, text }));
 }
 
-function buildGuidance({ viewerRole, emergencyActive, mlRiskState, factors, online }) {
+function buildGuidance({ viewerRole, emergencyActive, mlRiskState, factors, online, dataUncertain = false }) {
   if (emergencyActive) {
     return rules.EMERGENCY_ACTIONS[viewerRole].map(({ dedupeKey, priority, text }) => ({ priority, text }));
   }
@@ -216,6 +223,14 @@ function buildGuidance({ viewerRole, emergencyActive, mlRiskState, factors, onli
   if (candidates.length === 0 && (mlRiskState === RISK_STATES.CRITICAL || mlRiskState === RISK_STATES.WARNING)) {
     const rule = rules.REVIEW_ML_SIGNAL_ACTION[mlRiskState];
     candidates.push({ dedupeKey: rule.dedupeKey, priority: rule.priority, text: rule[viewerRole] });
+  }
+
+  if (dataUncertain && !mlRiskState) {
+    candidates.push({
+      dedupeKey: rules.DATA_QUALITY_ACTION.dedupeKey,
+      priority: rules.DATA_QUALITY_ACTION.priority,
+      text: rules.DATA_QUALITY_ACTION[viewerRole],
+    });
   }
 
   if (candidates.length === 0) {
@@ -257,7 +272,8 @@ async function getSafetyGuidance(userId, viewerRole) {
   ]);
 
   const emergencyActive = state ? state.emergencyActive : false;
-  const mlRiskState = state ? state.currentRiskState : null;
+  const mlRiskState = effectiveRiskState(state);
+  const { dataUncertain, uncertainReason } = statusFields(state);
 
   if (!latest) {
     return {
@@ -296,8 +312,8 @@ async function getSafetyGuidance(userId, viewerRole) {
   // this list (#9 — 1-4 factors), never a paragraph-heavy dump.
   factors.sort((a, b) => severityRank(b) - severityRank(a));
 
-  const operationalState = computeOperationalState({ emergencyActive, mlRiskState, factors });
-  const guidance = buildGuidance({ viewerRole, emergencyActive, mlRiskState, factors, online });
+  const operationalState = computeOperationalState({ emergencyActive, mlRiskState, factors, dataUncertain });
+  const guidance = buildGuidance({ viewerRole, emergencyActive, mlRiskState, factors, online, dataUncertain });
 
   const attentionCount = factors.filter(
     (f) => f.severity === RISK_STATES.CRITICAL || f.severity === RISK_STATES.WARNING || (f.sensor === "heartRate" && f.attention)
@@ -308,6 +324,7 @@ async function getSafetyGuidance(userId, viewerRole) {
   else if (operationalState === RISK_STATES.CRITICAL) summaryText = rules.SUMMARY.CRITICAL(viewerRole, Math.max(attentionCount, 1));
   else if (operationalState === RISK_STATES.WARNING) summaryText = rules.SUMMARY.WARNING(viewerRole, Math.max(attentionCount, 1));
   else if (operationalState === RISK_STATES.SAFE) summaryText = rules.SUMMARY.SAFE();
+  else if (operationalState === "UNCERTAIN") summaryText = rules.SUMMARY.UNCERTAIN(viewerRole, describeDataQualityReason(uncertainReason));
   else summaryText = rules.SUMMARY.UNKNOWN();
 
   return {
@@ -318,6 +335,8 @@ async function getSafetyGuidance(userId, viewerRole) {
       operationalState,
       mlRiskState,
       emergencyActive,
+      dataUncertain,
+      uncertainReason,
       online,
       lastUpdated: latest.timestamp,
       readingsLabel: online === false ? "Last known readings" : "Current readings",

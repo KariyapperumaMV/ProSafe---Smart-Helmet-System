@@ -413,7 +413,7 @@ describe("GET /api/dashboard/worker", () => {
   test("worker without a processing state -> operationalState UNKNOWN, not SAFE", async () => {
     const worker = await createUser({ role: "WORKER" });
     const res = await request(app).get("/api/dashboard/worker").set(authHeader(worker));
-    expect(res.body.status).toEqual({ operationalState: "UNKNOWN", currentRiskState: null, emergencyActive: false });
+    expect(res.body.status).toMatchObject({ operationalState: "UNKNOWN", currentRiskState: null, emergencyActive: false, dataUncertain: false });
   });
 
   test("worker in emergency -> operationalState EMERGENCY even if currentRiskState is SAFE", async () => {

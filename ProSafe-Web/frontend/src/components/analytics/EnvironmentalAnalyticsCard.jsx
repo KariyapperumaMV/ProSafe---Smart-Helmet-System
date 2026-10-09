@@ -7,7 +7,7 @@ import { formatBucketLabel } from "../../utils/formatBucketLabel";
 const SENSORS = [
   { key: "ambientTemperature", label: "Ambient Temperature", unit: "°C" },
   { key: "noise", label: "Noise", unit: "dB" },
-  { key: "gas", label: "Gas", unit: "ppm" },
+  { key: "gas", label: "Gas", unit: "units" }, // uncalibrated sensor units, not ppm
   { key: "uv", label: "UV", unit: "" },
 ];
 

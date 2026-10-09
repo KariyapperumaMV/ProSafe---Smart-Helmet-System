@@ -8,7 +8,7 @@ import { getNoiseHistory, getGasHistory, getUvHistory, getAmbientTemperatureHist
 
 const SENSOR_CONFIG = {
   noise: { title: "Sound Level", fetch: getNoiseHistory },
-  gas: { title: "Gas / PPM Level", fetch: getGasHistory },
+  gas: { title: "Gas Level (uncalibrated sensor units)", fetch: getGasHistory },
   uv: { title: "UV Light Level", fetch: getUvHistory },
   ambientTemperature: { title: "Ambient Temperature", fetch: getAmbientTemperatureHistory },
 };

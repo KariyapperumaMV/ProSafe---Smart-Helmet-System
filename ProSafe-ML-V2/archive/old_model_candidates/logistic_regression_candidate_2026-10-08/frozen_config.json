@@ -1,0 +1,116 @@
+{
+  "frozen_at_utc": "2026-10-08T06:25:22+00:00",
+  "frozen_before_external_test": true,
+  "external_test_worker": "W_002",
+  "external_test_policy": "W_002 was never loaded by model selection, tuning, scaling or preprocessing-rule design. Before this freeze it was opened only for the brief-mandated structure/label inventory (src/eda.py: counts, nulls, unique labels).",
+  "algorithm": "Logistic Regression",
+  "feature_set": "EXTENDED",
+  "feature_columns": [
+    "ambient_temperature",
+    "uv_index",
+    "gas",
+    "noise",
+    "body_temperature",
+    "heart_rate",
+    "hr_deviation_bpm",
+    "hr_deviation_pct",
+    "body_temp_deviation_c",
+    "body_temp_deviation_pct",
+    "gas_ratio_to_baseline",
+    "heart_rate_rolling_mean_30s",
+    "heart_rate_rolling_mean_60s",
+    "heart_rate_rolling_std_60s",
+    "body_temp_rolling_mean_300s",
+    "ambient_temp_rolling_mean_300s",
+    "uv_rolling_mean_300s",
+    "gas_rolling_mean_30s",
+    "noise_rolling_mean_60s",
+    "hr_trend_60s_bpm_per_min",
+    "body_temp_trend_300s_c_per_min",
+    "ambient_temp_trend_300s_c_per_min",
+    "uv_trend_300s_per_min",
+    "gas_trend_60s_per_min",
+    "noise_trend_60s_db_per_min",
+    "noise_dose_pct",
+    "temp_warning_exposure_sec",
+    "temp_critical_exposure_sec",
+    "uv_warning_exposure_sec",
+    "uv_critical_exposure_sec",
+    "gas_warning_exposure_sec",
+    "gas_critical_exposure_sec",
+    "noise_warning_exposure_sec",
+    "noise_critical_exposure_sec",
+    "hr_warning_exposure_sec",
+    "hr_critical_exposure_sec",
+    "body_temp_warning_exposure_sec",
+    "body_temp_critical_exposure_sec"
+  ],
+  "hyperparameters": {
+    "C": 0.01,
+    "max_iter": 3000
+  },
+  "uses_scaling": true,
+  "scaling": "SimpleImputer(median) -> StandardScaler, fitted on the training rows only. Imputation only touches the deferrable warm-up NaNs and rare raw-sensor NaNs; tree models receive NaN natively.",
+  "class_weighting": "class_weight='balanced'",
+  "label_mapping": {
+    "Critical": 0,
+    "Safe": 1,
+    "Warning": 2
+  },
+  "classes": [
+    "Safe",
+    "Warning",
+    "Critical"
+  ],
+  "uncertain_is_a_class": false,
+  "deferrable_features_may_be_nan": [
+    "body_temp_rolling_mean_300s",
+    "ambient_temp_rolling_mean_300s",
+    "uv_rolling_mean_300s",
+    "hr_trend_60s_bpm_per_min",
+    "gas_trend_60s_per_min",
+    "noise_trend_60s_db_per_min",
+    "body_temp_trend_300s_c_per_min",
+    "ambient_temp_trend_300s_c_per_min",
+    "uv_trend_300s_per_min"
+  ],
+  "random_state": 42,
+  "development_workers": [
+    "S_001",
+    "S_002",
+    "S_003",
+    "S_004",
+    "W_001"
+  ],
+  "development_rows": 32579,
+  "development_data_sha256": {
+    "prosafe_synthetic_ml_ready.csv": "4cd035ccfdd2ba8390eb6f63f1e6ab03c391e88ef6b117c0f0d692c12fbbb9f9",
+    "prosafe_W001_ml_ready.csv": "84a5fb136f236957c5b3409140952aa88e9e6d4fa69a87bafe33234bc51484bf"
+  },
+  "selection": {
+    "selected_model": "Logistic Regression",
+    "selected_feature_set": "EXTENDED",
+    "reason": "Ranked first under the pre-registered rule (EXTENDED Logistic Regression). EXTENDED beats best CORE by 0.0671 > 0.01.",
+    "ranking_rule": {
+      "1": "pooled out-of-fold macro F1 (candidates within 0.005 of the best are tied)",
+      "2": "critical recall",
+      "3": "balanced accuracy",
+      "4": "lower Critical->Safe rate",
+      "extended_parsimony_margin": 0.01
+    }
+  },
+  "tuning": {
+    "search": "ParameterGrid",
+    "n_configs": 7,
+    "cv": "leave-one-worker-out over development workers (pooled out-of-fold metrics)",
+    "chosen_config": "search_01",
+    "chosen_params": {
+      "C": 0.01,
+      "max_iter": 3000
+    },
+    "chosen_macro_f1": 0.7058139948389598,
+    "default_macro_f1": 0.6594429854115008,
+    "chosen_critical_recall": 0.9047353760445682,
+    "default_critical_recall": 0.856824512534819
+  }
+}

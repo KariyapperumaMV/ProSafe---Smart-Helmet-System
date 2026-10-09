@@ -254,7 +254,7 @@ describe("GET /api/helmets/:helmetId (details)", () => {
 
     expect(res.body.assigned).toBe(true);
     expect(res.body.assignedTo).toEqual({ userId: worker.userId, name: "Nirmani Silva" });
-    expect(res.body.workerSafety).toEqual({ currentRiskState: "WARNING", emergencyActive: false });
+    expect(res.body.workerSafety).toMatchObject({ operationalState: "WARNING", currentRiskState: "WARNING", emergencyActive: false, dataUncertain: false });
     expect(JSON.stringify(res.body)).not.toMatch(/passwordHash/i);
   });
 
@@ -265,7 +265,7 @@ describe("GET /api/helmets/:helmetId (details)", () => {
     await WorkerProcessingState.create({ workerId: worker.userId, currentRiskState: "SAFE", emergencyActive: true });
 
     const res = await request(app).get("/api/helmets/PS-H-091").set(authHeader(admin));
-    expect(res.body.workerSafety).toEqual({ currentRiskState: "SAFE", emergencyActive: true });
+    expect(res.body.workerSafety).toMatchObject({ operationalState: "EMERGENCY", currentRiskState: "SAFE", emergencyActive: true });
   });
 
   test("online: true when the latest packet is within the offline threshold", async () => {

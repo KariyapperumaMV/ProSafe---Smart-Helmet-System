@@ -9,24 +9,35 @@ const { USER_ROLES } = require("../constants/roles");
 // superseded by the Users module; `workerId` here is the same business key
 // as User.userId, so every other pipeline collection (WorkerProcessingState,
 // HelmetData, Alert, HelmetCommand) needed no changes at all.
+//
+// The baselines are worker CONTEXT for ProSafe ML V2 (deviations, deviation
+// exposure counters) — never model features. Unavailability is explicit:
+// `unavailableReason` is "WORKER_NOT_FOUND" or "BASELINE_UNAVAILABLE", and the
+// values are null rather than a partial/invalid number, so the V2 gate reports
+// UNCERTAIN / BASELINE_UNAVAILABLE instead of predicting on a made-up baseline.
+const isPositiveNumber = (v) => typeof v === "number" && Number.isFinite(v) && v > 0;
+
 async function getWorkerBaseline(workerId) {
   const worker = await User.findOne({ userId: workerId, role: USER_ROLES.WORKER });
 
   if (!worker) {
-    return { found: false, hasBaseline: false, baselineHeartRate: null, baselineBodyTemperature: null };
+    return {
+      found: false,
+      hasBaseline: false,
+      baselineHeartRate: null,
+      baselineBodyTemperature: null,
+      unavailableReason: "WORKER_NOT_FOUND",
+    };
   }
 
-  const hasBaseline =
-    typeof worker.baselineHeartRate === "number" &&
-    worker.baselineHeartRate > 0 &&
-    typeof worker.baselineBodyTemperature === "number" &&
-    worker.baselineBodyTemperature > 0;
+  const hasBaseline = isPositiveNumber(worker.baselineHeartRate) && isPositiveNumber(worker.baselineBodyTemperature);
 
   return {
     found: true,
     hasBaseline,
-    baselineHeartRate: worker.baselineHeartRate,
-    baselineBodyTemperature: worker.baselineBodyTemperature,
+    baselineHeartRate: hasBaseline ? worker.baselineHeartRate : null,
+    baselineBodyTemperature: hasBaseline ? worker.baselineBodyTemperature : null,
+    unavailableReason: hasBaseline ? null : "BASELINE_UNAVAILABLE",
   };
 }
 

@@ -58,6 +58,6 @@ describe("SafetyPredictionModal", () => {
     render(<SafetyPredictionModal open userId="W-001" onClose={vi.fn()} />);
 
     expect(await screen.findByText("No accepted prediction yet")).toBeInTheDocument();
-    expect(screen.getByText("No accepted predictions recorded yet today.")).toBeInTheDocument();
+    expect(screen.getByText("No predictions recorded yet today.")).toBeInTheDocument();
   });
 });

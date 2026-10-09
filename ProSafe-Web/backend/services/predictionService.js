@@ -1,12 +1,24 @@
-const WorkerProcessingState = require("../models/WorkerProcessingState");
-const { RISK_SEVERITY_ORDER } = require("../constants/riskStates");
+const { RISK_SEVERITY_ORDER, SYSTEM_STATES, BACKEND_UNCERTAIN_REASONS } = require("../constants/riskStates");
 const { ml: mlConfig, smoothing: smoothingConfig } = require("../config/processingConfig");
 
-// Stage 12: a low-confidence prediction never touches history or state.
-function checkPredictionConfidence(mlResult) {
-  const confidence = typeof mlResult.confidence === "number" ? mlResult.confidence : 0;
-  const accepted = confidence >= mlConfig.confidenceThreshold;
-  return { accepted, predictedState: mlResult.predictedState, confidence };
+// Post-processing of ProSafe ML V2 decisions. Pure functions over an
+// in-memory WorkerProcessingState document: sensorProcessingService loads the
+// state once per batch, applies these per sample in order, and saves once.
+
+// Stage 12: the 0.70 rule (unchanged from v1, not tuned on any test worker).
+// A READY prediction below the threshold is reported UNCERTAIN /
+// LOW_CONFIDENCE: it is stored with its real probabilities but never enters
+// smoothing and never changes the risk state. UNCERTAIN decisions from V2
+// (classifier not called) pass through unchanged.
+function applyConfidenceRule(decision) {
+  if (decision.systemState === SYSTEM_STATES.UNCERTAIN) {
+    return { accepted: false, systemState: SYSTEM_STATES.UNCERTAIN, uncertainReason: decision.uncertainReason };
+  }
+  const confidence = typeof decision.confidence === "number" ? decision.confidence : 0;
+  if (confidence < mlConfig.confidenceThreshold) {
+    return { accepted: false, systemState: SYSTEM_STATES.UNCERTAIN, uncertainReason: BACKEND_UNCERTAIN_REASONS.LOW_CONFIDENCE };
+  }
+  return { accepted: true, systemState: decision.predictedState, uncertainReason: null };
 }
 
 // Majority vote over the accepted-prediction window. Ties (e.g. 2 SAFE / 2
@@ -35,41 +47,36 @@ function majorityVote(history) {
   )[0];
 }
 
-// Stage 13: only ever called with an accepted (high-confidence) prediction.
-// Maintains a per-worker history, bounded to PREDICTION_WINDOW_SIZE.
-async function updatePredictionHistory(workerId, { predictedState, confidence }) {
-  let state = await WorkerProcessingState.findOne({ workerId });
-  if (!state) {
-    state = new WorkerProcessingState({ workerId });
-  }
+// A new ProSafe ML V2 session (gap > 30 min, new workday, helmet or baseline
+// change, V2 restart) invalidates the previous session's votes and confirmed
+// risk state: they were computed on different windows/baselines. Returns true
+// when the session changed.
+function syncSession(state, sessionId) {
+  if (!sessionId || sessionId === state.lastSessionId) return false;
+  state.lastSessionId = sessionId;
+  state.predictionHistory = [];
+  state.currentRiskState = null;
+  return true;
+}
 
-  state.predictionHistory.push({ riskLevel: predictedState, confidence, at: new Date() });
+// Stage 13: only ever called with an accepted (high-confidence) prediction.
+// Maintains a per-worker history, bounded to PREDICTION_WINDOW_SIZE. At 1 Hz
+// a 5-vote window is ~5 s; a change needs 3 of 5 votes (~3 s).
+function pushAcceptedPrediction(state, { predictedState, confidence, at }) {
+  state.predictionHistory.push({ riskLevel: predictedState, confidence, at });
   if (state.predictionHistory.length > smoothingConfig.windowSize) {
     state.predictionHistory = state.predictionHistory.slice(-smoothingConfig.windowSize);
   }
-
-  const smoothedState = majorityVote(state.predictionHistory);
-  await state.save();
-
-  return smoothedState;
+  return majorityVote(state.predictionHistory);
 }
 
-// Stage 14: compares the smoothed state against the worker's last saved
-// state and persists the new one. Only a real change is reported as a
-// transition — WARNING -> WARNING never generates one.
-async function compareAndUpdateRiskState(workerId, smoothedState) {
-  let state = await WorkerProcessingState.findOne({ workerId });
-  if (!state) {
-    state = new WorkerProcessingState({ workerId });
-  }
-
-  const previousRiskState = state.currentRiskState;
+// Stage 14: compares the smoothed state against the confirmed state. Only a
+// real change is reported as a transition — WARNING -> WARNING never is.
+function updateRiskState(state, smoothedState) {
+  const previousRiskState = state.currentRiskState || null;
   const changed = previousRiskState !== smoothedState;
-
   state.currentRiskState = smoothedState;
-  await state.save();
-
   return { changed, previousRiskState, currentRiskState: smoothedState };
 }
 
-module.exports = { checkPredictionConfidence, updatePredictionHistory, compareAndUpdateRiskState };
+module.exports = { applyConfidenceRule, majorityVote, syncSession, pushAcceptedPrediction, updateRiskState };

@@ -13,8 +13,8 @@ async function workerDisplayName(workerId) {
 }
 
 // Emergency is a request for help, not an ML decision — this file never
-// calls baselineService.getWorkerBaseline, deviationService, exposureService,
-// featureVectorService, mlService, or predictionService. It reuses
+// calls baselineService.getWorkerBaseline, mlService (ProSafe ML V2), or
+// predictionService. It reuses
 // resolveWorkerId() from Phase 1 (the same helmetId -> workerId resolution
 // the normal pipeline uses), but treats ANY resolution failure as a hard
 // rejection — unlike normal telemetry, there's no value in recording an

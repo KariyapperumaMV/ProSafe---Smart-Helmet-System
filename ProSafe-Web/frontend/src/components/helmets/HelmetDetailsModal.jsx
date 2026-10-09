@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Modal } from "../ui/Modal";
 import { LoadingState } from "../ui/LoadingState";
 import { EmptyState } from "../ui/EmptyState";
-import { StatusBadge, RiskBadge } from "../ui/StatusBadge";
+import { StatusBadge, OperationalStatus } from "../ui/StatusBadge";
 import { getHelmet } from "../../api/helmetApi";
 import { formatRelativeTime as relativeTime } from "../../utils/formatRelativeTime";
 
@@ -105,7 +105,7 @@ export function HelmetDetailsModal({ open, onClose, helmetId }) {
               {data.workerSafety.emergencyActive ? (
                 <StatusBadge tone="danger">Emergency</StatusBadge>
               ) : (
-                <RiskBadge state={data.workerSafety.currentRiskState} />
+                <OperationalStatus status={data.workerSafety} />
               )}
             </>
           )}

@@ -2,14 +2,16 @@ const STATE_TONE = {
   SAFE: "green",
   WARNING: "warning",
   CRITICAL: "critical",
+  UNCERTAIN: "uncertain",
 };
 
 function formatTime(iso) {
   return new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 }
 
-// SAFE/WARNING/CRITICAL are categorical, not a percentage — this renders
-// today's accepted-prediction history as a sequence of colored segments
+// SAFE/WARNING/CRITICAL/UNCERTAIN are categorical, not a percentage — this
+// renders today's history (accepted predictions plus UNCERTAIN periods, when
+// no trustworthy decision existed) as a sequence of colored segments
 // (already transition-compressed by the backend) rather than forcing it
 // into a line/bar chart built for continuous numbers. Not built on the
 // shared chart library: a generic charting API doesn't map cleanly onto

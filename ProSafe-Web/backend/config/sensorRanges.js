@@ -28,6 +28,12 @@ const { RISK_STATES } = require("../constants/riskStates");
 //                        CRITICAL (false for noise — see note below)
 const THRESHOLDS = {
   ambientTemperature: { safeBelow: 27, warningMax: 35, warningInclusive: true }, // <27 safe; <=35 warning; >35 critical
+  // Gas: the owner's table is in ppm, but the helmet reports UNCALIBRATED
+  // MQ-2 sensor units (no ppm calibration exists for this hardware), so this
+  // display category is not a calibrated ppm comparison. The numbers are kept
+  // unchanged (no new thresholds invented) and labelled accordingly; the gas
+  // hazard used for risk is judged by ProSafe ML V2 relative to the session's
+  // own gas baseline. Replace once the sensor is calibrated.
   gas: { safeBelow: 150, warningMax: 300, warningInclusive: true }, // <150 safe; <=300 warning; >300 critical
   // The source table visually shows "Critical: 85-90 dB" (implying a
   // ceiling), but the project owner deliberately chose >=85 => CRITICAL with
@@ -49,13 +55,14 @@ const RANGE_META = {
     },
   },
   gas: {
-    label: "Gas (PPM)",
-    unit: "ppm",
-    standard: "NIOSH fire/smoke early warning guidance",
+    label: "Gas (sensor units)",
+    unit: "units",
+    standard: "NIOSH fire/smoke guidance values, applied to UNCALIBRATED sensor units (not ppm)",
+    calibrated: false,
     displayRanges: {
-      safe: { label: "< 150 ppm" },
-      warning: { label: "150–300 ppm" },
-      critical: { label: "> 300 ppm" },
+      safe: { label: "< 150" },
+      warning: { label: "150–300" },
+      critical: { label: "> 300" },
     },
   },
   noise: {

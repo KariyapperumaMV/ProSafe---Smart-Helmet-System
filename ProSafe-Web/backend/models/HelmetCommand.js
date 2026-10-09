@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const { RISK_STATES } = require("../constants/riskStates");
+const { SYSTEM_STATES } = require("../constants/riskStates");
 
 // One document per helmet holding the *current* desired command. The helmet
 // polls GET /api/helmet/command/:helmetId (existing communication mechanism)
@@ -17,7 +17,8 @@ const helmetCommandSchema = new mongoose.Schema({
 
   // Populated when command === "SET_RISK". Centralizes the risk -> LED
   // mapping's output; the mapping itself lives in helmetCommandService.
-  risk: { type: String, enum: [...Object.values(RISK_STATES), null], default: null },
+  // UNCERTAIN = "no trustworthy risk decision" (blue LED on the helmet), never SAFE.
+  risk: { type: String, enum: [...Object.values(SYSTEM_STATES), null], default: null },
 }, { timestamps: true });
 
 module.exports = mongoose.model("HelmetCommand", helmetCommandSchema);

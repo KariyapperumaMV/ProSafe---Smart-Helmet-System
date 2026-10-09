@@ -16,6 +16,7 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <time.h>
+#include <sys/time.h>
 // ==============================
 // WIFI & BACKEND API CONFIG
 // ==============================
@@ -94,7 +95,9 @@ const int LED_PWM_RES = 8;       // 0-255 duty
 #define BODY_TEMP_MAX_SAFE 38
 #define BODY_TEMP_WARNING 40
 #define BODY_TEMP_CRITICAL_LOW 30
-const float BODY_TEMP_CONTACT_DELTA = 1.5f;  // Min difference vs ambient to ensure skin contact
+// (The former "body temp must exceed ambient by 1.5 degC" contact rule was removed:
+// it rejected genuine readings in hot conditions. Plausibility / skin-contact
+// checks now happen in ProSafe ML V2, which treats < 30 degC as no contact.)
 const float BODY_TEMP_FILTER_ALPHA = 0.2f;    // Smoothing factor for LM35 (0-1)
 
 // UV Index
@@ -109,8 +112,7 @@ const float BODY_TEMP_FILTER_ALPHA = 0.2f;    // Smoothing factor for LM35 (0-1)
 const uint8_t DHT_READ_RETRIES = 3;
 const uint8_t DHT_MAX_FAILURES_BEFORE_RESET = 5;
 const unsigned long DHT_RESET_COOLDOWN_MS = 2000;
-const float DHT_FALLBACK_TEMP_C = 34.5f;
-const float DHT_FALLBACK_HUMIDITY = 58.0f;
+// No fabricated fallback ambient values: a failed DHT11 read is sent as null.
 
 const unsigned long GPS_READ_WINDOW_MS = 20;
 const unsigned long EMERGENCY_DEBOUNCE_MS = 50;
@@ -124,7 +126,34 @@ const float IR_BASELINE_ALPHA = 0.05f; // Baseline update speed when no finger p
 // ==============================
 // ADDITIONAL TIMING CONSTANTS (from Code B)
 // ==============================
-const unsigned long PACKET_INTERVAL_MS = 60000;      // Send normal data every 60 seconds
+// ProSafe ML V2 needs ~1 Hz samples, each with its own timestamp (no averaging).
+// Samples are buffered and uploaded in batches; unsent samples survive network
+// failures (oldest dropped only when the buffer is full -> backend sees a gap).
+const unsigned long SAMPLE_INTERVAL_MS = 1000;        // one sample per second
+const unsigned long UPLOAD_INTERVAL_MS = 5000;        // batch upload every ~5 s
+const uint16_t SAMPLE_BUFFER_CAPACITY = 120;          // 2 minutes of samples while offline
+const uint16_t MAX_SAMPLES_PER_UPLOAD = 30;
+const unsigned long COMMAND_STALE_AFTER_MS = 30000;   // no valid command for 30 s -> LED UNCERTAIN (blue)
+const char* NTP_SERVER_1 = "pool.ntp.org";
+const char* NTP_SERVER_2 = "time.google.com";
+const time_t MIN_VALID_EPOCH = 1704067200;            // 2024-01-01: clock not synced before this
+
+// ---- Unit conversion to the units of the ProSafe ML V2 training data ----
+// Noise (dB): INMP441 sensitivity is -26 dBFS for a 94 dB SPL 1 kHz tone, so
+// SPL = 94 - (-26) + dBFS = 120 + dBFS (24-bit full scale). Unweighted
+// (not A-weighted) and uncalibrated: verify against a reference sound level
+// meter and set NOISE_CAL_OFFSET_DB.
+const float INMP441_DBFS_AT_94DB_SPL = -26.0f;
+const float NOISE_CAL_OFFSET_DB = 0.0f;
+// UV (index, fractional): GUVA-S12SD breakout, UV index ~= Vout[mV] / 100.
+// Module-datasheet approximation; check the module's gain before trusting it.
+const float UV_MV_PER_INDEX = 100.0f;
+// Gas ("sensor units", NOT ppm): the training data's gas scale (~4-55) has no
+// documented relation to the MQ-2 ADC. UNVERIFIED default: percent of ADC full
+// scale. Calibrate against the training-data collection setup before relying
+// on absolute gas values (V2's gas ratio to the session baseline is unit-free).
+const float GAS_UNITS_PER_ADC_COUNT = 100.0f / 4095.0f;
+const float GAS_ADC_OFFSET = 0.0f;
 const unsigned long COMMAND_POLL_INTERVAL_MS = 5000; // Poll backend for commands every 5 seconds
 const unsigned long EMERGENCY_POLL_INTERVAL_MS = 3000; // Poll dedicated reset endpoint every ~3s while in emergency
 const unsigned long WIFI_RECONNECT_INTERVAL_MS = 30000; // Retry WiFi every 30 seconds if disconnected
@@ -150,7 +179,8 @@ float ambientHumidity = NAN;
 float noiseLevel = NAN;
 float bodyTemp = NAN;
 int heartRate = 0;
-int uvIndex = 0;
+float uvIndex = NAN;       // UV index (fractional), see UV_MV_PER_INDEX
+float gasValue = NAN;      // gas in V2 "sensor units" (NOT ppm), see GAS_UNITS_PER_ADC_COUNT
 float latitude = 0.0;
 float longitude = 0.0;
 String location = "Unknown";
@@ -169,7 +199,7 @@ float bodyTempFiltered = NAN;
 bool bodyTempFilterInitialized = false;
 int dhtFailureStreak = 0;
 unsigned long lastDhtResetAttemptAt = 0;
-bool dhtUsingFallback = false;
+bool dhtFailureLogged = false;
 
 // Status Flags
 bool isEmergency = false;
@@ -188,16 +218,18 @@ int gpsCurrentRxPin = GPS_RX;
 int gpsCurrentTxPin = GPS_TX;
 
 // Alert tracking
-enum AlertLevel { ALERT_NORMAL, ALERT_WARNING, ALERT_CRITICAL, ALERT_EMERGENCY };
+enum AlertLevel { ALERT_NORMAL, ALERT_WARNING, ALERT_CRITICAL, ALERT_EMERGENCY, ALERT_UNCERTAIN };
 AlertLevel currentAlertLevel = ALERT_NORMAL;
 
 // Most recently received backend risk decision (Node backend's ML pipeline
 // output, via GET .../api/helmet/command/:helmetId). The helmet does not
-// compute this itself. SAFE is only the pre-first-command startup value —
-// once a valid command has been received, a failed/malformed/unreachable
-// poll leaves this untouched rather than assuming SAFE (see checkBackendCommand()).
-enum BackendRiskState { BACKEND_RISK_SAFE, BACKEND_RISK_WARNING, BACKEND_RISK_CRITICAL };
-BackendRiskState backendRiskState = BACKEND_RISK_SAFE;
+// compute this itself. UNCERTAIN (blue) is the startup value and is shown
+// whenever no valid command has been received for COMMAND_STALE_AFTER_MS —
+// the helmet never assumes SAFE (see checkBackendCommand() / handleAlerts()).
+enum BackendRiskState { BACKEND_RISK_SAFE, BACKEND_RISK_WARNING, BACKEND_RISK_CRITICAL, BACKEND_RISK_UNCERTAIN };
+BackendRiskState backendRiskState = BACKEND_RISK_UNCERTAIN;
+unsigned long lastCommandOkAt = 0;
+bool commandEverReceived = false;
 
 // Detection thresholds
 const long IR_FINGER_THRESHOLD = 50000;  // MIN IR level to consider a valid finger on MAX30102
@@ -213,7 +245,21 @@ unsigned long backendProbeSuppressedUntil = 0;
 
 // Packet sending flags
 bool emergencyPacketSent = false;
-unsigned long lastPacketSentAt = 0;
+unsigned long lastSampleAt = 0;
+unsigned long lastUploadAt = 0;
+
+// 1 Hz sample ring buffer (oldest first). A channel the helmet could not read
+// has its valid flag cleared and is sent as JSON null.
+struct HelmetSample {
+    time_t epoch;
+    uint16_t millisPart;
+    float heartRate, bodyTemp, ambientTemp, noiseDb, gas, uv;
+    bool hrValid, bodyValid, ambientValid, noiseValid, gasValid, uvValid;
+};
+HelmetSample sampleBuffer[SAMPLE_BUFFER_CAPACITY];
+uint16_t sampleHead = 0;     // index of the oldest sample
+uint16_t sampleCount = 0;
+unsigned long samplesDropped = 0;
 unsigned long lastCommandCheckAt = 0;
 unsigned long lastEmergencyPollAt = 0;
 // True from the moment a backend reset is applied locally until the ack
@@ -262,7 +308,8 @@ void handleAlerts();
 void setLEDColor(int r, int g, int b);
 void displayReadings();
 void calculateHeartRate();
-float calculateNoiseRMS();
+float calculateNoiseSplDb();
+void readFastSensors();
 void calibrateSensors();
 void updateEmergencyButton();
 void activateEmergency();
@@ -281,7 +328,10 @@ bool postJSON(const char* url, JsonDocument &doc);
 bool sendEmergencyPacket();
 void pollEmergencyReset();
 bool acknowledgeEmergencyReset();
-void sendNormalPacket();
+void captureSample();
+void uploadSamples();
+int postJSONCode(const char* url, JsonDocument &doc);
+bool clockIsSynced();
 void checkBackendCommand();
 String getHelmetStatusString();
 String getIsoTimestamp();
@@ -316,15 +366,16 @@ void setup() {
     
     // Connect to Wi-Fi (non‑blocking attempt)
     connectWiFi();
-    
-    Serial.println("\nSystem Ready!");
-    Serial.println("All conditions good");
-    setLEDColor(0, 255, 0);  // Green LED
-    
-    delay(1000);
 
-    // Force the first normal packet to send immediately after initial sensor read
-    lastPacketSentAt = millis() - PACKET_INTERVAL_MS;
+    // Per-sample timestamps need wall-clock time (UTC). Samples are only
+    // recorded once the clock is synced (see captureSample()).
+    configTime(0, 0, NTP_SERVER_1, NTP_SERVER_2);
+
+    Serial.println("\nSystem Ready!");
+    Serial.println("Waiting for the backend's first risk decision (LED blue = uncertain)");
+    setLEDColor(0, 0, 255);  // Blue LED: no risk decision yet — never assume safe
+
+    delay(1000);
 }
 
 // ==============================
@@ -396,13 +447,18 @@ void loop() {
     static size_t lastGpsChars = 0;
     
     updateEmergencyButton();
-    
-    // Read all sensors
-    readAllSensors();
-    
-    // Check conditions (updates environment flags and populates warning/critical
-    // lists — Serial diagnostics only; no longer drives the LED, see handleAlerts()).
-    checkConditions();
+
+    // Heart-rate beat detection and the LM35 filter need every loop iteration.
+    readFastSensors();
+
+    // One timestamped sample per second (no averaging across samples).
+    if (millis() - lastSampleAt >= SAMPLE_INTERVAL_MS) {
+        lastSampleAt = millis();
+        readAllSensors();
+        captureSample();
+        // Serial diagnostics only (warning/critical lists); never drives the LED.
+        checkConditions();
+    }
 
     // Handle alerts (LED: emergency red, else the backend's risk state)
     handleAlerts();
@@ -477,10 +533,10 @@ void loop() {
         }
     }
 
-    // Send normal data packet at fixed interval
-    if (millis() - lastPacketSentAt >= PACKET_INTERVAL_MS) {
-        lastPacketSentAt = millis();
-        sendNormalPacket();
+    // Upload buffered 1 Hz samples in batches
+    if (millis() - lastUploadAt >= UPLOAD_INTERVAL_MS) {
+        lastUploadAt = millis();
+        uploadSamples();
     }
     // ==============================
     
@@ -491,9 +547,10 @@ void loop() {
 // READ ALL SENSORS
 // ==============================
 void readAllSensors() {
-    // MQ-2 Gas Sensor
+    // MQ-2 Gas Sensor: raw ADC (diagnostics) -> V2 sensor units (see GAS_UNITS_PER_ADC_COUNT)
     mq2Value = analogRead(MQ2_PIN);
     mq2Valid = (mq2Value >= 0 && mq2Value <= 4095);
+    gasValue = mq2Valid ? (mq2Value - GAS_ADC_OFFSET) * GAS_UNITS_PER_ADC_COUNT : NAN;
     
     // DHT11 Ambient Temp/Humidity with retry + auto-reset
     float dhtTemp = NAN;
@@ -532,63 +589,33 @@ void readAllSensors() {
     }
 
     if (ambientTempValid || ambientHumidityValid) {
-        if (dhtUsingFallback) {
+        if (dhtFailureLogged) {
             Serial.println("DHT11 recovered, resuming live ambient readings");
         }
-        dhtUsingFallback = false;
+        dhtFailureLogged = false;
         dhtFailureStreak = 0;
     } else {
+        // No stale or fabricated value is sent: this second's ambient reading is null.
         dhtFailureStreak++;
-        if (dhtFailureStreak == 1 && !dhtUsingFallback) {
-            Serial.println("Warning: DHT11 read failed, keeping last values");
+        if (!dhtFailureLogged) {
+            Serial.println("Warning: DHT11 read failed, ambient temperature sent as null");
+            dhtFailureLogged = true;
         }
         if (dhtFailureStreak >= DHT_MAX_FAILURES_BEFORE_RESET && (millis() - lastDhtResetAttemptAt) > DHT_RESET_COOLDOWN_MS) {
             Serial.println("Warning: DHT11 failed repeatedly, reinitializing sensor...");
             dht.begin();
             lastDhtResetAttemptAt = millis();
         }
-        if (!dhtUsingFallback && dhtFailureStreak >= DHT_MAX_FAILURES_BEFORE_RESET) {
-            ambientTemp = DHT_FALLBACK_TEMP_C;
-            ambientHumidity = DHT_FALLBACK_HUMIDITY;
-            ambientTempValid = true;
-            ambientHumidityValid = true;
-            dhtUsingFallback = true;
-            Serial.println("DHT11 offline, using fallback ambient data");
-        }
     }
-    
-    // LM35 Body Temperature (10mV per °C)
-    int lm35MilliVolts = analogReadMilliVolts(LM35_PIN);
-    float bodyTempInstant = lm35MilliVolts / 10.0f;
-    if (lm35MilliVolts > 0) {
-        if (!bodyTempFilterInitialized || isnan(bodyTempFiltered)) {
-            bodyTempFiltered = bodyTempInstant;
-            bodyTempFilterInitialized = true;
-        } else {
-            bodyTempFiltered += BODY_TEMP_FILTER_ALPHA * (bodyTempInstant - bodyTempFiltered);
-        }
-        bodyTemp = bodyTempFiltered;
-    } else {
-        bodyTemp = bodyTempInstant;
-        bodyTempFilterInitialized = false;
-        bodyTempFiltered = bodyTempInstant;
-    }
-    bool ambientValid = ambientTempValid;
-    bool tempInHumanRange = (bodyTemp >= 32.0f && bodyTemp <= 45.0f);
-    bool hasContactDelta = (!ambientValid) ? true : ((bodyTemp - ambientTemp) >= BODY_TEMP_CONTACT_DELTA);
-    bodyTempValid = (lm35MilliVolts > 0 && bodyTempFilterInitialized && tempInHumanRange && hasContactDelta);
-    
-    // UV Sensor
-    int uvReading = analogRead(UV_PIN);
-    uvIndex = map(uvReading, 0, 4095, 0, 15);  // Approximate UV index
-    uvIndexValid = (uvReading >= 0 && uvReading <= 4095);
-    
-    // Noise Level
-    noiseLevel = calculateNoiseRMS();
-    
-    // Heart Rate
-    calculateHeartRate();
-    
+
+    // UV Sensor: GUVA-S12SD output voltage -> fractional UV index
+    int uvMilliVolts = analogReadMilliVolts(UV_PIN);
+    uvIndexValid = (uvMilliVolts >= 0);
+    uvIndex = uvIndexValid ? uvMilliVolts / UV_MV_PER_INDEX : NAN;
+
+    // Noise Level (approximate unweighted dB SPL)
+    noiseLevel = calculateNoiseSplDb();
+
     /*
     // GPS
     readGpsStream();
@@ -701,12 +728,41 @@ void clearEmergency() {
 }
 
 // ==============================
-// CALCULATE NOISE RMS
+// FAST SENSORS (every loop iteration)
 // ==============================
-float calculateNoiseRMS() {
+// Beat detection must drain the MAX30102 FIFO continuously, and the LM35
+// low-pass filter keeps its original per-loop time constant. The 1 Hz sample
+// takes whatever these hold at that second.
+void readFastSensors() {
+    calculateHeartRate();
+
+    // LM35 Body Temperature (10mV per °C)
+    int lm35MilliVolts = analogReadMilliVolts(LM35_PIN);
+    float bodyTempInstant = lm35MilliVolts / 10.0f;
+    if (lm35MilliVolts > 0) {
+        if (!bodyTempFilterInitialized || isnan(bodyTempFiltered)) {
+            bodyTempFiltered = bodyTempInstant;
+            bodyTempFilterInitialized = true;
+        } else {
+            bodyTempFiltered += BODY_TEMP_FILTER_ALPHA * (bodyTempInstant - bodyTempFiltered);
+        }
+        bodyTemp = bodyTempFiltered;
+    } else {
+        bodyTemp = bodyTempInstant;
+        bodyTempFilterInitialized = false;
+        bodyTempFiltered = bodyTempInstant;
+    }
+    // Only a failed ADC read is invalid here; skin contact / plausibility is
+    // judged by ProSafe ML V2 (body temperature < 30 degC = no contact).
+    bodyTempValid = (lm35MilliVolts > 0 && bodyTempFilterInitialized);
+}
+
+// ==============================
+// CALCULATE NOISE LEVEL (dB SPL, approximate)
+// ==============================
+float calculateNoiseSplDb() {
     int32_t samples[256];
     size_t bytes_read = 0;
-    float sum = 0.0f;
     static unsigned long lastI2sErrorLog = 0;
     const TickType_t readTimeout = pdMS_TO_TICKS(5);
 
@@ -731,13 +787,25 @@ float calculateNoiseRMS() {
         return noiseLevel;  // Keep last reading if no new samples
     }
     
+    // INMP441 delivers 24-bit samples left-justified in 32 bits. Remove the DC
+    // offset, take the RMS relative to 24-bit full scale (dBFS), then convert
+    // with the datasheet sensitivity (see INMP441_DBFS_AT_94DB_SPL).
+    double sum = 0.0, sumSq = 0.0;
     for (size_t i = 0; i < num_samples; i++) {
-        float sample = static_cast<float>(samples[i] >> 14);  // Reduce to ~18-bit range
-        sum += sample * sample;
+        double sample = static_cast<double>(samples[i] >> 8);
+        sum += sample;
+        sumSq += sample * sample;
     }
+    double mean = sum / num_samples;
+    double variance = sumSq / num_samples - mean * mean;
+    if (variance <= 0.0) {
+        noiseValid = false;
+        return NAN;
+    }
+    double dbfs = 20.0 * log10(sqrt(variance) / 8388608.0);
 
     noiseValid = true;
-    return sqrtf(sum / num_samples);
+    return static_cast<float>(94.0 - INMP441_DBFS_AT_94DB_SPL + dbfs + NOISE_CAL_OFFSET_DB);
 }
 
 // ==============================
@@ -918,7 +986,12 @@ void handleAlerts() {
         return;
     }
 
-    switch (backendRiskState) {
+    // A stale decision (backend unreachable / no command for a while) is shown
+    // as UNCERTAIN, never as the last SAFE.
+    bool commandStale = !commandEverReceived || (millis() - lastCommandOkAt > COMMAND_STALE_AFTER_MS);
+    BackendRiskState shown = commandStale ? BACKEND_RISK_UNCERTAIN : backendRiskState;
+
+    switch (shown) {
         case BACKEND_RISK_CRITICAL:
             setLEDColor(255, 0, 0);  // Red
             currentAlertLevel = ALERT_CRITICAL;
@@ -928,9 +1001,13 @@ void handleAlerts() {
             currentAlertLevel = ALERT_WARNING;
             break;
         case BACKEND_RISK_SAFE:
-        default:
             setLEDColor(0, 255, 0);  // Green
             currentAlertLevel = ALERT_NORMAL;
+            break;
+        case BACKEND_RISK_UNCERTAIN:
+        default:
+            setLEDColor(0, 0, 255);  // Blue: no trustworthy risk decision
+            currentAlertLevel = ALERT_UNCERTAIN;
             break;
     }
 }
@@ -951,8 +1028,8 @@ void displayReadings() {
     Serial.println("\n         SENSOR READINGS");
     Serial.println("=========================================");
     
-    // Gas Sensor (ppm)
-    Serial.print("Gas (ppm): ");
+    // Gas Sensor (raw MQ-2 ADC count — not ppm; the uploaded value is gasValue)
+    Serial.print("Gas (raw ADC, not ppm): ");
     if (!mq2Valid) {
         Serial.println("-- (sensor fault)");
     } else {
@@ -1180,13 +1257,18 @@ String getHelmetStatusString() {
         case ALERT_WARNING:   return "WARNING";
         case ALERT_CRITICAL:  return "CRITICAL";
         case ALERT_EMERGENCY: return "EMERGENCY";
+        case ALERT_UNCERTAIN: return "UNCERTAIN";
         default:              return "UNKNOWN";
     }
 }
 
+bool clockIsSynced() {
+    return time(nullptr) >= MIN_VALID_EPOCH;
+}
+
 String getIsoTimestamp() {
     time_t now = time(nullptr);
-    if (now > 0) {
+    if (now >= MIN_VALID_EPOCH) {
         struct tm timeinfo;
         gmtime_r(&now, &timeinfo);
         char buffer[25];
@@ -1253,16 +1335,21 @@ void checkWiFiConnection() {
 }
 
 // Generic HTTP POST for JSON documents. Returns success so callers that need
-// to retry (emergency packet, reset ack) can tell whether to try again —
-// existing callers that don't care (sendNormalPacket) simply ignore it.
+// to retry (emergency packet, reset ack) can tell whether to try again.
 bool postJSON(const char* url, JsonDocument &doc) {
+    return postJSONCode(url, doc) > 0;
+}
+
+// Same POST, returning the HTTP status (or <= 0 when nothing was delivered),
+// so the sample uploader can tell "rejected" (4xx: drop) from "retry later".
+int postJSONCode(const char* url, JsonDocument &doc) {
     if (WiFi.status() != WL_CONNECTED) {
         Serial.println("Wi‑Fi not connected, cannot send data");
-        return false;
+        return -1;
     }
     if (!ensureBackendReachable()) {
         Serial.println("Skipping HTTP POST (backend unreachable)");
-        return false;
+        return -1;
     }
     esp_task_wdt_reset();
     HTTPClient http;
@@ -1285,7 +1372,7 @@ bool postJSON(const char* url, JsonDocument &doc) {
         backendProbeSuppressedUntil = millis() + BACKEND_PROBE_COOLDOWN_MS;
     }
     http.end();
-    return success;
+    return success ? httpCode : -1;
 }
 
 // Send emergency packet. helmetId + emergency:true only — the firmware
@@ -1353,40 +1440,106 @@ bool acknowledgeEmergencyReset() {
 }
 
 // ==============================
-// Send normal data packet — flat contract matching the Node backend's
-// validationService.js exactly (helmetId, timestamp, heartRate, bodyTemp,
-// ambientTemp, noise, gas, uv, optional gps). The backend now makes the
-// SAFE/WARNING/CRITICAL decision, so no self-assessed "status" is sent.
-// -1 (not NaN) marks a reading as invalid, same sentinel convention this
-// file already used — NaN is not guaranteed to serialize as valid JSON via
-// ArduinoJson, and -1 already fails the backend's plausibility range check,
-// so an invalid reading still causes that field (and per Stage 6, the whole
-// packet) to be rejected server-side rather than silently accepted.
+// 1 Hz SAMPLES -> BATCHED UPLOAD
 // ==============================
-void sendNormalPacket() {
-    Serial.println("[HTTP] Queuing normal packet");
-    StaticJsonDocument<512> doc;
-    doc["helmetId"] = HELMET_ID;
-    doc["timestamp"] = getIsoTimestamp();
-
-    doc["heartRate"]   = heartRateValid ? heartRate : -1;
-    doc["bodyTemp"]    = bodyTempValid ? bodyTemp : -1;
-    doc["ambientTemp"] = ambientTempValid ? ambientTemp : -1;
-    doc["noise"]       = (noiseValid && !isnan(noiseLevel)) ? noiseLevel : -1;
-    doc["gas"]         = mq2Valid ? mq2Value : -1;
-    doc["uv"]          = uvIndexValid ? uvIndex : -1;
-
-    // Only a genuine GPS fix is sent — never the hard-coded fallback
-    // coordinates. GPS acquisition is currently stubbed out (see
-    // readAllSensors()/readGpsStream()), so gps.location.isValid() is
-    // always false today and this omits the field, which is accurate.
-    if (gps.location.isValid()) {
-        JsonObject gpsObj = doc["gps"].to<JsonObject>();
-        gpsObj["lat"] = gps.location.lat();
-        gpsObj["lon"] = gps.location.lng();
+// Contract (backend validationService.validateHelmetBatch):
+//   {"helmetId": "...", "samples": [{"timestamp": "2026-10-09T03:30:05.123Z",
+//     "heartRate", "bodyTemp", "ambientTemp", "noise", "gas", "uv"}, ...]}
+// oldest first, one entry per second, each with its own timestamp. A channel
+// the helmet could not read is null (never -1, never a fabricated value).
+// Units: heartRate bpm, bodyTemp/ambientTemp degC, noise dB SPL (approximate),
+// gas V2 "sensor units" (NOT ppm), uv index (fractional). The backend and
+// ProSafe ML V2 make every SAFE/WARNING/CRITICAL/UNCERTAIN decision.
+void captureSample() {
+    if (!clockIsSynced()) {
+        static unsigned long lastClockWarning = 0;
+        if (millis() - lastClockWarning > 10000) {
+            Serial.println("Clock not synced yet (NTP) — sample not recorded");
+            lastClockWarning = millis();
+        }
+        return;
     }
 
-    postJSON(NORMAL_API_URL, doc);
+    struct timeval tv;
+    gettimeofday(&tv, nullptr);
+
+    HelmetSample s;
+    s.epoch = tv.tv_sec;
+    s.millisPart = (uint16_t)(tv.tv_usec / 1000);
+    s.hrValid = heartRateValid && heartRate > 0;
+    s.heartRate = (float)heartRate;
+    s.bodyValid = bodyTempValid && !isnan(bodyTemp);
+    s.bodyTemp = bodyTemp;
+    s.ambientValid = ambientTempValid && !isnan(ambientTemp);
+    s.ambientTemp = ambientTemp;
+    s.noiseValid = noiseValid && !isnan(noiseLevel);
+    s.noiseDb = noiseLevel;
+    s.gasValid = mq2Valid && !isnan(gasValue);
+    s.gas = gasValue;
+    s.uvValid = uvIndexValid && !isnan(uvIndex);
+    s.uv = uvIndex;
+
+    if (sampleCount == SAMPLE_BUFFER_CAPACITY) {
+        // Buffer full (backend unreachable for a long time): drop the oldest.
+        sampleHead = (sampleHead + 1) % SAMPLE_BUFFER_CAPACITY;
+        sampleCount--;
+        samplesDropped++;
+    }
+    sampleBuffer[(sampleHead + sampleCount) % SAMPLE_BUFFER_CAPACITY] = s;
+    sampleCount++;
+}
+
+static void putChannel(JsonObject &o, const char* key, bool valid, float value, uint8_t decimals) {
+    if (valid) {
+        o[key] = serialized(String(value, (unsigned int)decimals));
+    } else {
+        o[key] = nullptr;
+    }
+}
+
+void uploadSamples() {
+    if (sampleCount == 0) return;
+
+    uint16_t n = sampleCount < MAX_SAMPLES_PER_UPLOAD ? sampleCount : MAX_SAMPLES_PER_UPLOAD;
+    JsonDocument doc;
+    doc["helmetId"] = HELMET_ID;
+    JsonArray arr = doc["samples"].to<JsonArray>();
+    for (uint16_t i = 0; i < n; i++) {
+        const HelmetSample &s = sampleBuffer[(sampleHead + i) % SAMPLE_BUFFER_CAPACITY];
+        JsonObject o = arr.add<JsonObject>();
+        struct tm t;
+        gmtime_r(&s.epoch, &t);
+        char ts[32];
+        snprintf(ts, sizeof(ts), "%04d-%02d-%02dT%02d:%02d:%02d.%03uZ",
+                 t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec, (unsigned)s.millisPart);
+        o["timestamp"] = ts;
+        putChannel(o, "heartRate", s.hrValid, s.heartRate, 0);
+        putChannel(o, "bodyTemp", s.bodyValid, s.bodyTemp, 2);
+        putChannel(o, "ambientTemp", s.ambientValid, s.ambientTemp, 1);
+        putChannel(o, "noise", s.noiseValid, s.noiseDb, 1);
+        putChannel(o, "gas", s.gasValid, s.gas, 2);
+        putChannel(o, "uv", s.uvValid, s.uv, 2);
+        // Only a genuine GPS fix is sent — never the hard-coded fallback
+        // coordinates (GPS acquisition is currently stubbed out).
+        if (gps.location.isValid()) {
+            JsonObject gpsObj = o["gps"].to<JsonObject>();
+            gpsObj["lat"] = gps.location.lat();
+            gpsObj["lon"] = gps.location.lng();
+        }
+    }
+
+    Serial.printf("[HTTP] Uploading %u samples (%u buffered, %lu dropped so far)\n", n, sampleCount, samplesDropped);
+    int code = postJSONCode(NORMAL_API_URL, doc);
+    if ((code >= 200 && code < 300) || (code >= 400 && code < 500)) {
+        // 2xx: stored. 4xx: rejected as malformed — resending identical data
+        // would be rejected forever, so it is dropped (and logged).
+        if (code >= 400) {
+            Serial.printf("Backend rejected %u samples (HTTP %d) — dropped\n", n, code);
+        }
+        sampleHead = (sampleHead + n) % SAMPLE_BUFFER_CAPACITY;
+        sampleCount -= n;
+    }
+    // Network failure or 5xx: keep the samples and retry on the next upload.
 }
 
 // ==============================
@@ -1420,12 +1573,21 @@ void checkBackendCommand() {
                 const char* risk = doc["risk"];
                 // Unrecognized/missing risk value: ignore, keep last valid
                 // backendRiskState (never assume SAFE on a bad response).
+                bool recognised = true;
                 if (risk && strcmp(risk, "SAFE") == 0) {
                     backendRiskState = BACKEND_RISK_SAFE;
                 } else if (risk && strcmp(risk, "WARNING") == 0) {
                     backendRiskState = BACKEND_RISK_WARNING;
                 } else if (risk && strcmp(risk, "CRITICAL") == 0) {
                     backendRiskState = BACKEND_RISK_CRITICAL;
+                } else if (risk && strcmp(risk, "UNCERTAIN") == 0) {
+                    backendRiskState = BACKEND_RISK_UNCERTAIN;
+                } else {
+                    recognised = false;
+                }
+                if (recognised) {
+                    lastCommandOkAt = millis();
+                    commandEverReceived = true;
                 }
             }
         }

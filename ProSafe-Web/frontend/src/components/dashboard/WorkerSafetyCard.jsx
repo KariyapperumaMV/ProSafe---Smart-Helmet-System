@@ -1,9 +1,10 @@
 import { GlassCard } from "../ui/GlassCard";
-import { StatusBadge, RiskBadge } from "../ui/StatusBadge";
+import { StatusBadge, OperationalStatus } from "../ui/StatusBadge";
 
 // operationalState is already computed server-side (#18: EMERGENCY overrides
-// everything, UNKNOWN when there's no processing state yet, never SAFE by
-// default) — this component just displays it, no re-deriving.
+// everything, UNCERTAIN when the latest data can't support a decision,
+// UNKNOWN when there's no processing state yet, never SAFE by default) —
+// this component just displays it, no re-deriving.
 export function WorkerSafetyCard({ status }) {
   const isEmergency = status.operationalState === "EMERGENCY";
 
@@ -13,7 +14,7 @@ export function WorkerSafetyCard({ status }) {
       {isEmergency ? (
         <StatusBadge tone="danger">EMERGENCY</StatusBadge>
       ) : (
-        <RiskBadge state={status.currentRiskState} />
+        <OperationalStatus status={status} />
       )}
     </GlassCard>
   );

@@ -1,0 +1,39 @@
+feature,category,min_seconds_into_run,rows_compared,rows_matching,match_rate,max_abs_diff,offline_nan_online_value,online_nan_offline_value
+ambient_temperature,raw sensor,0,39464,39464,1.0,0.0,16,0
+uv_index,raw sensor,0,39369,39369,1.0,0.0,97,0
+gas,raw sensor,0,39392,39392,1.0,0.0,79,0
+noise,raw sensor,0,39465,39465,1.0,0.0,13,0
+body_temperature,raw sensor,0,39480,39480,1.0,0.0,0,0
+heart_rate,raw sensor,0,39480,39480,1.0,0.0,0,0
+hr_deviation_bpm,deviation,0,39480,39480,1.0,1.7763568394002505e-15,0,0
+hr_deviation_pct,deviation,0,39480,39480,1.0,4.942528735663032e-05,0,0
+body_temp_deviation_c,deviation,0,39480,39480,1.0,6.827871601444713e-15,0,0
+body_temp_deviation_pct,deviation,0,39480,39480,1.0,4.994523547408036e-05,0,0
+gas_ratio_to_baseline,gas ratio,0,39392,39392,1.0,4.939759036126645e-05,79,0
+heart_rate_rolling_mean_30s,rolling,29,37392,37392,1.0,3.333333334865074e-05,0,0
+heart_rate_rolling_mean_60s,rolling,59,35232,35232,1.0,5.000000000165983e-05,0,0
+heart_rate_rolling_std_60s,rolling,59,35232,35232,1.0,4.999802241290041e-05,0,0
+body_temp_rolling_mean_300s,rolling,299,21046,21046,1.0,5.0000000008765255e-05,0,0
+ambient_temp_rolling_mean_300s,rolling,299,21046,21046,1.0,5.000000000165983e-05,0,0
+uv_rolling_mean_300s,rolling,299,21046,21046,1.0,5.000000000165983e-05,0,0
+gas_rolling_mean_30s,rolling,29,37392,37392,1.0,4.8275862067015396e-05,0,0
+noise_rolling_mean_60s,rolling,59,35232,35232,1.0,4.9056603771191476e-05,0,0
+hr_trend_60s_bpm_per_min,trend,59,35232,35232,1.0,4.999999999899529e-05,0,0
+body_temp_trend_300s_c_per_min,trend,299,21046,21046,1.0,4.999999999993204e-05,0,0
+ambient_temp_trend_300s_c_per_min,trend,299,21046,21046,1.0,5.000000000000143e-05,0,0
+uv_trend_300s_per_min,trend,299,21046,21046,1.0,5.0000000000105516e-05,0,0
+gas_trend_60s_per_min,trend,59,35232,35232,1.0,5.000000000032756e-05,0,0
+noise_trend_60s_db_per_min,trend,59,35232,35232,1.0,3.552713678800501e-14,0,0
+noise_dose_pct,noise dose,60,35160,35160,1.0,9.403172500288548e-05,0,0
+temp_warning_exposure_sec,exposure counter,60,35160,35159,0.999971558589306,17.0,0,0
+temp_critical_exposure_sec,exposure counter,60,35160,35160,1.0,0.0,0,0
+uv_warning_exposure_sec,exposure counter,60,35160,35017,0.9959328782707623,404.0,0,0
+uv_critical_exposure_sec,exposure counter,60,35160,35080,0.9977246871444824,3.0,0,0
+gas_warning_exposure_sec,exposure counter,60,35160,35160,1.0,0.0,0,0
+gas_critical_exposure_sec,exposure counter,60,35160,35160,1.0,0.0,0,0
+noise_warning_exposure_sec,exposure counter,60,35160,35160,1.0,0.0,0,0
+noise_critical_exposure_sec,exposure counter,60,35160,35160,1.0,0.0,0,0
+hr_warning_exposure_sec,exposure counter,60,35160,35160,1.0,0.0,0,0
+hr_critical_exposure_sec,exposure counter,60,35160,35160,1.0,0.0,0,0
+body_temp_warning_exposure_sec,exposure counter,60,35160,35091,0.9980375426621161,8.0,0,0
+body_temp_critical_exposure_sec,exposure counter,60,35160,35160,1.0,0.0,0,0

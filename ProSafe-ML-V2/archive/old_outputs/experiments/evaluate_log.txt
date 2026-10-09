@@ -1,0 +1,16 @@
+Frozen config: Logistic Regression / EXTENDED (frozen 2026-10-08T05:08:08+00:00)
+Experiment 1: Synthetic -> Synthetic (leave-one-synthetic-worker-out)
+Experiment 2: Synthetic -> W_002
+Experiment 3: W_001 + Synthetic -> W_002 (production artifact)
+Experiment 4: W_001 -> W_002
+Reference: DEV-CV and DEV-TRANSFER (development data only)
+Post-freeze analyses ...
+  experiment  macro_f1  balanced_accuracy  critical_recall  critical_false_negative_rate  critical_to_safe_rate  n_train  n_test
+        EXP1    0.7544             0.7962           0.6916                        0.3084                    0.0    13923   18564
+        EXP2    0.5532             0.7964           1.0000                        0.0000                    0.0    18564   13825
+        EXP3    0.6148             0.6177           0.0000                        1.0000                    0.0    32579   13825
+        EXP4    0.5880             0.5958           0.0000                        1.0000                    0.0    14015   13825
+      DEV-CV    0.7058             0.8503           0.9047                        0.0953                    0.0    26063   32579
+DEV-TRANSFER    0.6807             0.8529           1.0000                        0.0000                    0.0    18564   14015
+
+Written: E:\Github-clone\ProSafe---Smart-Helmet-System\ProSafe-ML-V2\outputs\experiment_summary.csv and .md

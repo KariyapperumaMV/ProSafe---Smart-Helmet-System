@@ -15,13 +15,25 @@ const emptyValues = {
   address: "",
   password: "",
   helmetId: null,
+  baselineHeartRate: "",
+  baselineBodyTemperature: "",
 };
+
+// Stored baselines are numbers or null; the inputs hold strings.
+function toInput(value) {
+  return value === null || value === undefined ? "" : String(value);
+}
 
 // Shared by AddUserPage and EditUserPage (#17/#21 — same form design). In
 // edit mode the password field is optional (#21) and userId is shown
 // read-only, never editable (#17 — backend generates it).
 export function UserForm({ mode = "add", initialValues, userId, onSubmit, submitting, serverErrors }) {
-  const [values, setValues] = useState({ ...emptyValues, ...initialValues });
+  const [values, setValues] = useState({
+    ...emptyValues,
+    ...initialValues,
+    baselineHeartRate: toInput(initialValues?.baselineHeartRate),
+    baselineBodyTemperature: toInput(initialValues?.baselineBodyTemperature),
+  });
   const [errors, setErrors] = useState({});
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(initialValues?.profileImageUrl || null);
@@ -40,8 +52,14 @@ export function UserForm({ mode = "add", initialValues, userId, onSubmit, submit
     setImagePreview(URL.createObjectURL(file));
   }
 
+  // Helmet and physiological baselines belong to workers only; switching to
+  // Admin clears them (the backend clears them too).
   function handleRoleChange(role) {
-    setValues((prev) => ({ ...prev, role, helmetId: role === USER_ROLES.ADMIN ? null : prev.helmetId }));
+    setValues((prev) =>
+      role === USER_ROLES.ADMIN
+        ? { ...prev, role, helmetId: null, baselineHeartRate: "", baselineBodyTemperature: "" }
+        : { ...prev, role }
+    );
   }
 
   function handleSubmit(e) {
@@ -144,6 +162,41 @@ export function UserForm({ mode = "add", initialValues, userId, onSubmit, submit
               <div />
             )}
           </div>
+
+          {values.role === USER_ROLES.WORKER && (
+            <>
+              <div className="ps-form-row-2">
+                <Field label="Baseline Heart Rate (BPM)" htmlFor="baselineHeartRate" error={fieldError("baselineHeartRate")}>
+                  <Input
+                    id="baselineHeartRate"
+                    type="number"
+                    inputMode="decimal"
+                    step="any"
+                    value={values.baselineHeartRate}
+                    onChange={(e) => setField("baselineHeartRate", e.target.value)}
+                    error={!!fieldError("baselineHeartRate")}
+                    placeholder="e.g. 72"
+                  />
+                </Field>
+                <Field label="Baseline Body Temperature (°C)" htmlFor="baselineBodyTemperature" error={fieldError("baselineBodyTemperature")}>
+                  <Input
+                    id="baselineBodyTemperature"
+                    type="number"
+                    inputMode="decimal"
+                    step="any"
+                    value={values.baselineBodyTemperature}
+                    onChange={(e) => setField("baselineBodyTemperature", e.target.value)}
+                    error={!!fieldError("baselineBodyTemperature")}
+                    placeholder="e.g. 36.6"
+                  />
+                </Field>
+              </div>
+              <p className="ps-help-text">
+                The worker&rsquo;s measured resting values. Leave both empty until measured &mdash; until then the
+                system reports this worker as Uncertain (baseline not set) instead of predicting risk.
+              </p>
+            </>
+          )}
 
           <Field label="Address" htmlFor="address" error={fieldError("address")}>
             <Textarea

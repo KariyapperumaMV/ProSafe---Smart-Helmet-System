@@ -27,6 +27,54 @@ async function generateAlert({ workerId, helmetId, timestamp, previousRiskState,
   });
 }
 
+// A worker stayed UNCERTAIN (no trustworthy risk decision) for a sustained
+// period for a non-warm-up reason. sensorProcessingService decides WHEN
+// (duration, once per episode, per-worker cooldown); this only records it.
+async function generateDataQualityAlert({ workerId, helmetId, timestamp, reason, reasons, uncertainSince, raw }) {
+  return Alert.create({
+    type: "DATA_QUALITY",
+    workerId,
+    helmetId,
+    timestamp,
+    dataQualityReason: reason,
+    dataQualityReasons: reasons && reasons.length ? reasons : [reason],
+    uncertainSince,
+    sensorSnapshot: raw
+      ? { heartRate: raw.heartRate, bodyTemp: raw.bodyTemp, ambientTemp: raw.ambientTemp, noise: raw.noise, gas: raw.gas, uv: raw.uv }
+      : undefined,
+    location: raw && raw.gps ? { lat: raw.gps.lat, lon: raw.gps.lon } : undefined,
+  });
+}
+
+// Human-readable text for a data-quality reason code (V2 gate reasons plus
+// the backend's own). Unknown codes are shown as-is rather than guessed.
+const DATA_QUALITY_REASON_TEXT = {
+  BASELINE_UNAVAILABLE: "worker baseline not set",
+  ML_SERVICE_UNAVAILABLE: "ML service unavailable",
+  LOW_CONFIDENCE: "low prediction confidence",
+  WORKER_NOT_FOUND: "worker not found",
+  BODY_CONTACT_FAILURE: "sensor skin contact lost",
+  SENSOR_UNAVAILABLE: "sensor reading unavailable",
+  TOO_MANY_MISSING_SENSORS: "several sensors unavailable",
+  PACKET_LOSS: "samples missing (packet loss)",
+  MAJOR_TIMESTAMP_GAP: "gap in the sample stream",
+  OUT_OF_ORDER_TIMESTAMP: "out-of-order samples",
+  UNSTABLE_HR: "unstable heart-rate signal",
+  INVALID_PACKET: "invalid sample",
+  REQUIRED_FEATURES_UNAVAILABLE: "required features unavailable",
+  SENSOR_WARMUP: "sensor warm-up",
+  INSUFFICIENT_HISTORY: "collecting initial history",
+  GAS_BASELINE_UNAVAILABLE: "gas baseline calibrating",
+};
+
+function describeDataQualityReason(reason) {
+  return DATA_QUALITY_REASON_TEXT[reason] || reason || "unknown reason";
+}
+
+function transitionLabel(previousRiskState, currentRiskState) {
+  return previousRiskState ? `Risk changed: ${previousRiskState} → ${currentRiskState}` : `Risk state: ${currentRiskState}`;
+}
+
 // The one place a stored Alert becomes a display object — used by the
 // dashboard's embedded summary and the standalone filtered/paginated list,
 // so the two can never describe the same alert differently. `workerName`
@@ -60,6 +108,9 @@ async function shapeAlerts(alerts) {
     previousRiskState: alert.previousRiskState,
     currentRiskState: alert.currentRiskState,
     confidence: alert.confidence,
+    dataQualityReason: alert.dataQualityReason || null,
+    dataQualityReasons: alert.dataQualityReasons || null,
+    uncertainSince: alert.uncertainSince || null,
     sensorSnapshot: alert.sensorSnapshot || null,
     location: alert.location && typeof alert.location.lat === "number" ? alert.location : null,
     acknowledged: alert.acknowledged,
@@ -69,13 +120,14 @@ async function shapeAlerts(alerts) {
     resolvedAt: alert.resolvedAt || null,
     resetRequested:
       alert.type === "EMERGENCY" && !alert.resolved ? Boolean(resetRequestedMap.get(alert.workerId)) : false,
-    // A factual label, not a fabricated cause — Alert has no free-text
-    // "trigger reason" field, only the transition itself or the fact of an
-    // emergency.
+    // A factual label, not a fabricated cause — only the transition itself,
+    // the fact of an emergency, or the recorded data-quality reason code.
     label:
       alert.type === "EMERGENCY"
         ? "Emergency button pressed"
-        : `Risk changed: ${alert.previousRiskState} → ${alert.currentRiskState}`,
+        : alert.type === "DATA_QUALITY"
+          ? `Data quality: ${describeDataQualityReason(alert.dataQualityReason)}`
+          : transitionLabel(alert.previousRiskState, alert.currentRiskState),
   }));
 }
 
@@ -90,7 +142,7 @@ async function listAlerts({ requesterRole, requesterId, type, risk, acknowledged
   if (requesterRole !== USER_ROLES.ADMIN) {
     filter.workerId = requesterId;
   }
-  if (type === "EMERGENCY" || type === "TRANSITION") {
+  if (type === "EMERGENCY" || type === "TRANSITION" || type === "DATA_QUALITY") {
     filter.type = type;
   }
   if (risk === "SAFE" || risk === "WARNING" || risk === "CRITICAL") {
@@ -148,4 +200,12 @@ async function acknowledgeAlert(alertId, adminUserId) {
   return { ok: true, status: 200, body: shaped };
 }
 
-module.exports = { generateAlert, listAlerts, acknowledgeAlert, shapeAlerts };
+module.exports = {
+  generateAlert,
+  generateDataQualityAlert,
+  describeDataQualityReason,
+  transitionLabel,
+  listAlerts,
+  acknowledgeAlert,
+  shapeAlerts,
+};

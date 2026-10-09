@@ -1,0 +1,217 @@
+{
+  "inventories": [
+    {
+      "dataset": "prosafe_synthetic_ml_ready.csv",
+      "rows": 18564,
+      "columns": 41,
+      "workers": {
+        "S_001": 4559,
+        "S_002": 4668,
+        "S_003": 4706,
+        "S_004": 4631
+      },
+      "timestamp_first": "2026-07-28 11:09:00",
+      "timestamp_last": "2026-08-14 11:35:00",
+      "timestamp_resolution": "minute (seconds not stored; rows are 1 Hz in file order)",
+      "distinct_minute_timestamps": 322,
+      "null_cells_total": 1134,
+      "null_cells_by_column": {
+        "uv_index": 27,
+        "gas": 44,
+        "noise": 7,
+        "gas_ratio_to_baseline": 44,
+        "body_temp_trend_300s_c_per_min": 460,
+        "ambient_temp_trend_300s_c_per_min": 276,
+        "uv_trend_300s_per_min": 276
+      },
+      "duplicate_rows": 0,
+      "duplicate_worker_timestamp_pairs": 18242,
+      "risk_level_unique": [
+        "Safe",
+        "Warning",
+        "Critical"
+      ],
+      "class_distribution": {
+        "Safe": 5783,
+        "Warning": 12207,
+        "Critical": 574
+      },
+      "raw_baseline_columns_present": [],
+      "forbidden_columns_present": []
+    },
+    {
+      "dataset": "prosafe_W001_ml_ready.csv",
+      "rows": 14015,
+      "columns": 41,
+      "workers": {
+        "W_001": 14015
+      },
+      "timestamp_first": "2026-07-21 09:03:00",
+      "timestamp_last": "2026-07-21 14:59:00",
+      "timestamp_resolution": "minute (seconds not stored; rows are 1 Hz in file order)",
+      "distinct_minute_timestamps": 237,
+      "null_cells_total": 1217,
+      "null_cells_by_column": {
+        "uv_index": 44,
+        "gas": 33,
+        "gas_ratio_to_baseline": 33,
+        "body_temp_rolling_mean_300s": 40,
+        "ambient_temp_rolling_mean_300s": 40,
+        "uv_rolling_mean_300s": 40,
+        "hr_trend_60s_bpm_per_min": 30,
+        "body_temp_trend_300s_c_per_min": 299,
+        "ambient_temp_trend_300s_c_per_min": 299,
+        "uv_trend_300s_per_min": 299,
+        "gas_trend_60s_per_min": 30,
+        "noise_trend_60s_db_per_min": 30
+      },
+      "duplicate_rows": 0,
+      "duplicate_worker_timestamp_pairs": 13778,
+      "risk_level_unique": [
+        "Safe",
+        "Warning",
+        "Critical"
+      ],
+      "class_distribution": {
+        "Safe": 3413,
+        "Warning": 9381,
+        "Critical": 1221
+      },
+      "raw_baseline_columns_present": [],
+      "forbidden_columns_present": []
+    },
+    {
+      "dataset": "prosafe_W002_ml_ready.csv",
+      "rows": 13825,
+      "columns": 41,
+      "workers": {
+        "W_002": 13825
+      },
+      "timestamp_first": "2026-07-24 09:03:00",
+      "timestamp_last": "2026-07-24 14:59:00",
+      "timestamp_resolution": "minute (seconds not stored; rows are 1 Hz in file order)",
+      "distinct_minute_timestamps": 237,
+      "null_cells_total": 1217,
+      "null_cells_by_column": {
+        "ambient_temperature": 16,
+        "uv_index": 46,
+        "gas": 20,
+        "noise": 8,
+        "gas_ratio_to_baseline": 20,
+        "body_temp_rolling_mean_300s": 40,
+        "ambient_temp_rolling_mean_300s": 40,
+        "uv_rolling_mean_300s": 40,
+        "hr_trend_60s_bpm_per_min": 30,
+        "body_temp_trend_300s_c_per_min": 299,
+        "ambient_temp_trend_300s_c_per_min": 299,
+        "uv_trend_300s_per_min": 299,
+        "gas_trend_60s_per_min": 30,
+        "noise_trend_60s_db_per_min": 30
+      },
+      "duplicate_rows": 0,
+      "duplicate_worker_timestamp_pairs": 13588,
+      "risk_level_unique": [
+        "Safe",
+        "Warning",
+        "Critical"
+      ],
+      "class_distribution": {
+        "Safe": 7114,
+        "Warning": 6451,
+        "Critical": 260
+      },
+      "raw_baseline_columns_present": [],
+      "forbidden_columns_present": []
+    }
+  ],
+  "coverage_inferred": [
+    {
+      "worker_id": "S_001",
+      "session": 1,
+      "session_start_inferred": "2026-07-28 11:06:00",
+      "expected_observations_1hz": 5000,
+      "ml_ready_observations_valid_or_imputed": 4559,
+      "uncertain_observations_inferred": 441,
+      "of_which_session_start_warmup": 180,
+      "of_which_mid_session": 261,
+      "uncertain_pct": 8.82
+    },
+    {
+      "worker_id": "S_002",
+      "session": 1,
+      "session_start_inferred": "2026-08-01 09:00:00",
+      "expected_observations_1hz": 5000,
+      "ml_ready_observations_valid_or_imputed": 4668,
+      "uncertain_observations_inferred": 332,
+      "of_which_session_start_warmup": 180,
+      "of_which_mid_session": 152,
+      "uncertain_pct": 6.64
+    },
+    {
+      "worker_id": "S_003",
+      "session": 1,
+      "session_start_inferred": "2026-08-07 13:17:00",
+      "expected_observations_1hz": 5000,
+      "ml_ready_observations_valid_or_imputed": 4706,
+      "uncertain_observations_inferred": 294,
+      "of_which_session_start_warmup": 180,
+      "of_which_mid_session": 114,
+      "uncertain_pct": 5.88
+    },
+    {
+      "worker_id": "S_004",
+      "session": 1,
+      "session_start_inferred": "2026-08-14 10:12:00",
+      "expected_observations_1hz": 5000,
+      "ml_ready_observations_valid_or_imputed": 4631,
+      "uncertain_observations_inferred": 369,
+      "of_which_session_start_warmup": 180,
+      "of_which_mid_session": 189,
+      "uncertain_pct": 7.38
+    },
+    {
+      "worker_id": "W_001",
+      "session": 1,
+      "session_start_inferred": "2026-07-21 09:00:00",
+      "expected_observations_1hz": 7200,
+      "ml_ready_observations_valid_or_imputed": 6958,
+      "uncertain_observations_inferred": 242,
+      "of_which_session_start_warmup": 180,
+      "of_which_mid_session": 62,
+      "uncertain_pct": 3.36
+    },
+    {
+      "worker_id": "W_001",
+      "session": 2,
+      "session_start_inferred": "2026-07-21 13:00:00",
+      "expected_observations_1hz": 7200,
+      "ml_ready_observations_valid_or_imputed": 7057,
+      "uncertain_observations_inferred": 143,
+      "of_which_session_start_warmup": 19,
+      "of_which_mid_session": 124,
+      "uncertain_pct": 1.99
+    },
+    {
+      "worker_id": "W_002",
+      "session": 1,
+      "session_start_inferred": "2026-07-24 09:00:00",
+      "expected_observations_1hz": 7197,
+      "ml_ready_observations_valid_or_imputed": 6843,
+      "uncertain_observations_inferred": 354,
+      "of_which_session_start_warmup": 180,
+      "of_which_mid_session": 174,
+      "uncertain_pct": 4.92
+    },
+    {
+      "worker_id": "W_002",
+      "session": 2,
+      "session_start_inferred": "2026-07-24 13:00:00",
+      "expected_observations_1hz": 7200,
+      "ml_ready_observations_valid_or_imputed": 6982,
+      "uncertain_observations_inferred": 218,
+      "of_which_session_start_warmup": 19,
+      "of_which_mid_session": 199,
+      "uncertain_pct": 3.03
+    }
+  ]
+}

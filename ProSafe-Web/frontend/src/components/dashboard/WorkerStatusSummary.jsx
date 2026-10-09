@@ -3,13 +3,15 @@ import { GlassCard } from "../ui/GlassCard";
 import { EmptyState } from "../ui/EmptyState";
 
 // Mutually exclusive by construction on the backend (#7) — this component
-// only ever displays the five counts it's given, it never re-derives or
-// re-buckets anything itself.
+// only ever displays the six counts it's given, it never re-derives or
+// re-buckets anything itself. "Uncertain" = no trustworthy risk decision
+// from the latest data (warm-up, missing baseline, sensor/ML problem).
 const CATEGORIES = [
   { key: "safe", label: "Safe", color: "var(--ps-green)" },
   { key: "warning", label: "Warning", color: "var(--ps-warning)" },
   { key: "critical", label: "Critical", color: "var(--ps-critical)" },
   { key: "emergency", label: "Emergency", color: "var(--ps-danger)" },
+  { key: "uncertain", label: "Uncertain", color: "var(--ps-uncertain)" },
   { key: "unknown", label: "Unknown", color: "var(--ps-text-faint)" },
 ];
 

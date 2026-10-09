@@ -27,6 +27,11 @@
   --ps-warning-soft: rgba(245, 158, 11, 0.14);
   --ps-critical: #f97316;
   --ps-safe: #22c55e;
+  /* UNCERTAIN: no trustworthy risk decision (data-quality gate, low
+     confidence, ML unavailable). Grey, never green — and visually distinct
+     from "Unknown" (dashed badge, hatched timeline). */
+  --ps-uncertain: #a3b1b6;
+  --ps-uncertain-soft: rgba(163, 177, 182, 0.12);
 
   --ps-radius-sm: 8px;
   --ps-radius-md: 14px;
@@ -241,6 +246,17 @@ button {
   color: var(--ps-critical);
   background: rgba(249, 115, 22, 0.14);
   border: 1px solid rgba(249, 115, 22, 0.32);
+}
+.ps-badge-uncertain {
+  color: var(--ps-uncertain);
+  background: var(--ps-uncertain-soft);
+  border: 1px dashed var(--ps-uncertain);
+}
+.ps-status-reason {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.78rem;
+  color: var(--ps-text-muted);
 }
 
 /* ---------- Scrollbar ---------- */
@@ -848,6 +864,9 @@ button {
 }
 .ps-timeline-neutral {
   background: var(--ps-text-faint);
+}
+.ps-timeline-uncertain {
+  background: repeating-linear-gradient(135deg, var(--ps-uncertain) 0 3px, var(--ps-text-faint) 3px 6px);
 }
 .ps-timeline-legend-list {
   list-style: none;
@@ -1792,6 +1811,9 @@ button {
 }
 .ps-alert-bar-danger {
   background: var(--ps-danger);
+}
+.ps-alert-bar-uncertain {
+  background: var(--ps-uncertain);
 }
 .ps-alert-row-main {
   flex: 1;

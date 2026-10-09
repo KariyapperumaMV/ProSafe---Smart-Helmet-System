@@ -33,6 +33,13 @@ const SUMMARY = {
     title: "Status unavailable",
     description: "Safety status has not been established yet for this worker.",
   }),
+  // ProSafe ML V2 could not make a trustworthy risk decision from the latest
+  // data (warm-up, missing baseline, lost sensor contact, ML service down...).
+  // Deliberately never worded as "safe".
+  UNCERTAIN: (viewerRole, reasonText) => ({
+    title: "Safety status uncertain",
+    description: `A reliable risk prediction for ${subjectFor(viewerRole)} is not available right now (${reasonText}). Do not assume conditions are safe.`,
+  }),
 };
 
 const EMERGENCY_ACTIONS = {
@@ -123,6 +130,14 @@ const CHECK_CONDITION_ACTION = {
   WORKER: "Consider taking a short break and monitor how you feel.",
 };
 
+// Shown whenever the latest data cannot support a risk decision.
+const DATA_QUALITY_ACTION = {
+  dedupeKey: "restoreReliableData",
+  priority: "MEDIUM",
+  ADMIN: "Risk status is uncertain. Check that the helmet is worn correctly and online, and that the worker's baseline is set.",
+  WORKER: "Your safety status can't be determined right now. Make sure the helmet is worn properly and stay alert to how you feel.",
+};
+
 const REVIEW_ML_SIGNAL_ACTION = {
   CRITICAL: {
     dedupeKey: "checkWorkerCondition",
@@ -158,6 +173,7 @@ module.exports = {
   ENVIRONMENTAL_ACTIONS,
   CHECK_CONDITION_ACTION,
   REVIEW_ML_SIGNAL_ACTION,
+  DATA_QUALITY_ACTION,
   COMMUNICATION_LOST_ACTION,
   SAFE_DEFAULT_ACTION,
   NO_HELMET: {

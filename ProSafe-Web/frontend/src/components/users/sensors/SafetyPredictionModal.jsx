@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Modal } from "../../ui/Modal";
 import { LoadingState } from "../../ui/LoadingState";
 import { EmptyState } from "../../ui/EmptyState";
-import { RiskBadge, StatusBadge } from "../../ui/StatusBadge";
+import { RiskBadge, StatusBadge, OperationalStatus } from "../../ui/StatusBadge";
 import { PredictionTimelineChart } from "./PredictionTimelineChart";
 import { getSafetyPredictionHistory } from "../../../api/userSensorApi";
 
@@ -53,8 +53,8 @@ export function SafetyPredictionModal({ open, onClose, userId }) {
 
           <div className="ps-sensor-value-row">
             <div className="ps-sensor-value-block">
-              <span className="ps-sensor-value-label">Current Smoothed Risk State</span>
-              <RiskBadge state={data.currentRiskState} />
+              <span className="ps-sensor-value-label">Current Status</span>
+              <OperationalStatus status={data} />
             </div>
 
             <div className="ps-sensor-value-block">
@@ -75,7 +75,7 @@ export function SafetyPredictionModal({ open, onClose, userId }) {
 
           <h3 className="ps-detail-section-title">Today&rsquo;s Prediction Timeline</h3>
           {data.todayHistory.length === 0 ? (
-            <EmptyState icon="📈" title="No accepted predictions recorded yet today." />
+            <EmptyState icon="📈" title="No predictions recorded yet today." />
           ) : (
             <PredictionTimelineChart segments={data.todayHistory} />
           )}

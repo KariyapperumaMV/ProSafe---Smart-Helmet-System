@@ -11,7 +11,7 @@ const SENSOR_DEFS = [
   { key: "bodyTemp", label: "Body Temperature", icon: "🌡", unit: "°C" },
   { key: "ambientTemp", label: "Ambient Temp", icon: "🌤", unit: "°C" },
   { key: "noise", label: "Noise", icon: "🔊", unit: "dB" },
-  { key: "gas", label: "Gas (PPM)", icon: "☁", unit: "ppm" },
+  { key: "gas", label: "Gas", icon: "☁", unit: "units" }, // uncalibrated sensor units, not ppm
   { key: "uv", label: "UV Light", icon: "☀", unit: "" },
 ];
 

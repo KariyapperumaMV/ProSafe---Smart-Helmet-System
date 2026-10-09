@@ -129,9 +129,70 @@ function toPublicUser(userDoc) {
   return rest;
 }
 
+// Personal physiological baselines (WORKER only). They are worker CONTEXT
+// for ProSafe ML V2 (deviation features are computed from them), never model
+// features, and never defaulted: a worker without both values is reported
+// UNCERTAIN / BASELINE_UNAVAILABLE until an admin sets them. The accepted
+// ranges are the same plausibility ranges ProSafe ML V2 applies to the live
+// heart-rate and body-temperature channels (PreprocessingConfig.channels).
+const BASELINE_FIELDS = {
+  baselineHeartRate: { min: 30, max: 220, label: "Baseline heart rate", unit: "bpm" },
+  baselineBodyTemperature: { min: 30, max: 43, label: "Baseline body temperature", unit: "°C" },
+};
+
+// undefined -> not provided; null / "" / "null" -> explicitly cleared;
+// a number or numeric string (multipart forms send strings) -> that number.
+function parseBaselineInput(value) {
+  if (value === undefined) return { provided: false, value: undefined, invalid: false };
+  if (value === null || value === "" || value === "null") return { provided: true, value: null, invalid: false };
+  const n = typeof value === "number" ? value : typeof value === "string" && value.trim() !== "" ? Number(value.trim()) : NaN;
+  return Number.isFinite(n) ? { provided: true, value: n, invalid: false } : { provided: true, value: undefined, invalid: true };
+}
+
+// -> { valid, errors, values: { baselineHeartRate, baselineBodyTemperature } }
+// `values` is what the user document must hold after this create/update:
+//  - non-WORKER: always null (a role change to ADMIN clears them);
+//  - WORKER: provided values, else (update) the current ones; both or neither.
+function validateBaselines(body, { role, isUpdate = false, current = {} } = {}) {
+  const errors = {};
+  const parsed = {};
+  for (const field of Object.keys(BASELINE_FIELDS)) parsed[field] = parseBaselineInput(body[field]);
+
+  if (role !== USER_ROLES.WORKER) {
+    for (const field of Object.keys(BASELINE_FIELDS)) {
+      if (parsed[field].invalid || (parsed[field].provided && parsed[field].value !== null)) {
+        errors[field] = "Physiological baselines apply to worker accounts only";
+      }
+    }
+    return { valid: Object.keys(errors).length === 0, errors, values: { baselineHeartRate: null, baselineBodyTemperature: null } };
+  }
+
+  const values = {};
+  for (const [field, limits] of Object.entries(BASELINE_FIELDS)) {
+    const p = parsed[field];
+    if (p.invalid) {
+      errors[field] = `${limits.label} must be a number`;
+    } else if (p.provided && p.value !== null && (p.value < limits.min || p.value > limits.max)) {
+      errors[field] = `${limits.label} must be between ${limits.min} and ${limits.max} ${limits.unit}`;
+    }
+    values[field] = p.provided ? p.value : isUpdate ? current[field] ?? null : null;
+  }
+
+  const hasHr = typeof values.baselineHeartRate === "number";
+  const hasBt = typeof values.baselineBodyTemperature === "number";
+  if (!Object.keys(errors).length && hasHr !== hasBt) {
+    errors[hasHr ? "baselineBodyTemperature" : "baselineHeartRate"] =
+      "Set both baselines (heart rate and body temperature), or leave both empty";
+  }
+
+  return { valid: Object.keys(errors).length === 0, errors, values };
+}
+
 module.exports = {
   generateUserId,
   validateUserFields,
+  validateBaselines,
+  BASELINE_FIELDS,
   findConflicts,
   validateHelmetAssignment,
   toPublicUser,

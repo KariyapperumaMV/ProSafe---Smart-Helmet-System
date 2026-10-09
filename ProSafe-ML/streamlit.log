@@ -1,0 +1,273 @@
+2026-09-01 11:17:50.505 Uvicorn server started on :::8501
+
+  You can now view your Streamlit app in your browser.
+
+  Local URL: http://localhost:8501
+  Network URL: http://192.168.8.101:8501
+  External URL: http://123.231.109.147:8501
+
+2026-09-01 11:18:56.021 Uncaught app execution
+Traceback (most recent call last):
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\scriptrunner\exec_code.py", line 136, in exec_func_with_error_handling
+    result = func()
+             ^^^^^^
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\scriptrunner\script_runner.py", line 837, in code_to_exec
+    exec(code, module.__dict__)  # noqa: S102
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Github-clone\ProSafe---Smart-Helmet-System\ProSafe-ML\app.py", line 158, in <module>
+    predictor = load_predictor(selected_model)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\caching\cache_utils.py", line 480, in __call__
+    return self._get_or_create_cached_value(args, kwargs, spinner_message)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\caching\cache_utils.py", line 536, in _get_or_create_cached_value
+    return self._handle_cache_miss(cache, value_key, func_args, func_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\caching\cache_utils.py", line 598, in _handle_cache_miss
+    computed_value = self._info.func(*func_args, **func_kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Github-clone\ProSafe---Smart-Helmet-System\ProSafe-ML\app.py", line 61, in load_predictor
+    return SafetyPredictor.load_named(model_name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Github-clone\ProSafe---Smart-Helmet-System\ProSafe-ML\src\predict.py", line 88, in load_named
+    model=joblib.load(entry["path"]),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\joblib\numpy_pickle.py", line 650, in load
+    with open(filename, 'rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'E:\\SLIIT materials\\Research - 2026\\ProSafe - ML\\models\\xgboost.pkl'
+2026-09-01 11:19:06.824 Uncaught app execution
+Traceback (most recent call last):
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\scriptrunner\exec_code.py", line 136, in exec_func_with_error_handling
+    result = func()
+             ^^^^^^
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\scriptrunner\script_runner.py", line 837, in code_to_exec
+    exec(code, module.__dict__)  # noqa: S102
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Github-clone\ProSafe---Smart-Helmet-System\ProSafe-ML\app.py", line 158, in <module>
+    predictor = load_predictor(selected_model)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\caching\cache_utils.py", line 480, in __call__
+    return self._get_or_create_cached_value(args, kwargs, spinner_message)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\caching\cache_utils.py", line 536, in _get_or_create_cached_value
+    return self._handle_cache_miss(cache, value_key, func_args, func_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\caching\cache_utils.py", line 598, in _handle_cache_miss
+    computed_value = self._info.func(*func_args, **func_kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Github-clone\ProSafe---Smart-Helmet-System\ProSafe-ML\app.py", line 61, in load_predictor
+    return SafetyPredictor.load_named(model_name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Github-clone\ProSafe---Smart-Helmet-System\ProSafe-ML\src\predict.py", line 88, in load_named
+    model=joblib.load(entry["path"]),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\joblib\numpy_pickle.py", line 650, in load
+    with open(filename, 'rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'E:\\SLIIT materials\\Research - 2026\\ProSafe - ML\\models\\xgboost.pkl'
+2026-09-01 11:19:09.445 Uncaught app execution
+Traceback (most recent call last):
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\scriptrunner\exec_code.py", line 136, in exec_func_with_error_handling
+    result = func()
+             ^^^^^^
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\scriptrunner\script_runner.py", line 837, in code_to_exec
+    exec(code, module.__dict__)  # noqa: S102
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Github-clone\ProSafe---Smart-Helmet-System\ProSafe-ML\app.py", line 158, in <module>
+    predictor = load_predictor(selected_model)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\caching\cache_utils.py", line 480, in __call__
+    return self._get_or_create_cached_value(args, kwargs, spinner_message)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\caching\cache_utils.py", line 536, in _get_or_create_cached_value
+    return self._handle_cache_miss(cache, value_key, func_args, func_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\caching\cache_utils.py", line 598, in _handle_cache_miss
+    computed_value = self._info.func(*func_args, **func_kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Github-clone\ProSafe---Smart-Helmet-System\ProSafe-ML\app.py", line 61, in load_predictor
+    return SafetyPredictor.load_named(model_name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Github-clone\ProSafe---Smart-Helmet-System\ProSafe-ML\src\predict.py", line 88, in load_named
+    model=joblib.load(entry["path"]),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\joblib\numpy_pickle.py", line 650, in load
+    with open(filename, 'rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'E:\\SLIIT materials\\Research - 2026\\ProSafe - ML\\models\\xgboost.pkl'
+2026-09-01 11:19:11.110 Uncaught app execution
+Traceback (most recent call last):
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\scriptrunner\exec_code.py", line 136, in exec_func_with_error_handling
+    result = func()
+             ^^^^^^
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\scriptrunner\script_runner.py", line 837, in code_to_exec
+    exec(code, module.__dict__)  # noqa: S102
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Github-clone\ProSafe---Smart-Helmet-System\ProSafe-ML\app.py", line 158, in <module>
+    predictor = load_predictor(selected_model)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\caching\cache_utils.py", line 480, in __call__
+    return self._get_or_create_cached_value(args, kwargs, spinner_message)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\caching\cache_utils.py", line 536, in _get_or_create_cached_value
+    return self._handle_cache_miss(cache, value_key, func_args, func_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\caching\cache_utils.py", line 598, in _handle_cache_miss
+    computed_value = self._info.func(*func_args, **func_kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Github-clone\ProSafe---Smart-Helmet-System\ProSafe-ML\app.py", line 61, in load_predictor
+    return SafetyPredictor.load_named(model_name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Github-clone\ProSafe---Smart-Helmet-System\ProSafe-ML\src\predict.py", line 88, in load_named
+    model=joblib.load(entry["path"]),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\joblib\numpy_pickle.py", line 650, in load
+    with open(filename, 'rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'E:\\SLIIT materials\\Research - 2026\\ProSafe - ML\\models\\xgboost.pkl'
+2026-09-01 11:19:11.984 Uncaught app execution
+Traceback (most recent call last):
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\scriptrunner\exec_code.py", line 136, in exec_func_with_error_handling
+    result = func()
+             ^^^^^^
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\scriptrunner\script_runner.py", line 837, in code_to_exec
+    exec(code, module.__dict__)  # noqa: S102
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Github-clone\ProSafe---Smart-Helmet-System\ProSafe-ML\app.py", line 158, in <module>
+    predictor = load_predictor(selected_model)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\caching\cache_utils.py", line 480, in __call__
+    return self._get_or_create_cached_value(args, kwargs, spinner_message)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\caching\cache_utils.py", line 536, in _get_or_create_cached_value
+    return self._handle_cache_miss(cache, value_key, func_args, func_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\caching\cache_utils.py", line 598, in _handle_cache_miss
+    computed_value = self._info.func(*func_args, **func_kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Github-clone\ProSafe---Smart-Helmet-System\ProSafe-ML\app.py", line 61, in load_predictor
+    return SafetyPredictor.load_named(model_name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Github-clone\ProSafe---Smart-Helmet-System\ProSafe-ML\src\predict.py", line 88, in load_named
+    model=joblib.load(entry["path"]),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\joblib\numpy_pickle.py", line 650, in load
+    with open(filename, 'rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'E:\\SLIIT materials\\Research - 2026\\ProSafe - ML\\models\\xgboost.pkl'
+2026-09-01 11:19:26.202 Uncaught app execution
+Traceback (most recent call last):
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\scriptrunner\exec_code.py", line 136, in exec_func_with_error_handling
+    result = func()
+             ^^^^^^
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\scriptrunner\script_runner.py", line 837, in code_to_exec
+    exec(code, module.__dict__)  # noqa: S102
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Github-clone\ProSafe---Smart-Helmet-System\ProSafe-ML\app.py", line 158, in <module>
+    predictor = load_predictor(selected_model)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\caching\cache_utils.py", line 480, in __call__
+    return self._get_or_create_cached_value(args, kwargs, spinner_message)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\caching\cache_utils.py", line 536, in _get_or_create_cached_value
+    return self._handle_cache_miss(cache, value_key, func_args, func_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\caching\cache_utils.py", line 598, in _handle_cache_miss
+    computed_value = self._info.func(*func_args, **func_kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Github-clone\ProSafe---Smart-Helmet-System\ProSafe-ML\app.py", line 61, in load_predictor
+    return SafetyPredictor.load_named(model_name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Github-clone\ProSafe---Smart-Helmet-System\ProSafe-ML\src\predict.py", line 88, in load_named
+    model=joblib.load(entry["path"]),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\joblib\numpy_pickle.py", line 650, in load
+    with open(filename, 'rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'E:\\SLIIT materials\\Research - 2026\\ProSafe - ML\\models\\xgboost.pkl'
+2026-09-01 11:19:27.044 Uncaught app execution
+Traceback (most recent call last):
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\scriptrunner\exec_code.py", line 136, in exec_func_with_error_handling
+    result = func()
+             ^^^^^^
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\scriptrunner\script_runner.py", line 837, in code_to_exec
+    exec(code, module.__dict__)  # noqa: S102
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Github-clone\ProSafe---Smart-Helmet-System\ProSafe-ML\app.py", line 158, in <module>
+    predictor = load_predictor(selected_model)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\caching\cache_utils.py", line 480, in __call__
+    return self._get_or_create_cached_value(args, kwargs, spinner_message)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\caching\cache_utils.py", line 536, in _get_or_create_cached_value
+    return self._handle_cache_miss(cache, value_key, func_args, func_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\caching\cache_utils.py", line 598, in _handle_cache_miss
+    computed_value = self._info.func(*func_args, **func_kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Github-clone\ProSafe---Smart-Helmet-System\ProSafe-ML\app.py", line 61, in load_predictor
+    return SafetyPredictor.load_named(model_name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Github-clone\ProSafe---Smart-Helmet-System\ProSafe-ML\src\predict.py", line 88, in load_named
+    model=joblib.load(entry["path"]),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\joblib\numpy_pickle.py", line 650, in load
+    with open(filename, 'rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'E:\\SLIIT materials\\Research - 2026\\ProSafe - ML\\models\\xgboost.pkl'
+2026-09-01 11:19:28.000 Uncaught app execution
+Traceback (most recent call last):
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\scriptrunner\exec_code.py", line 136, in exec_func_with_error_handling
+    result = func()
+             ^^^^^^
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\scriptrunner\script_runner.py", line 837, in code_to_exec
+    exec(code, module.__dict__)  # noqa: S102
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Github-clone\ProSafe---Smart-Helmet-System\ProSafe-ML\app.py", line 158, in <module>
+    predictor = load_predictor(selected_model)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\caching\cache_utils.py", line 480, in __call__
+    return self._get_or_create_cached_value(args, kwargs, spinner_message)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\caching\cache_utils.py", line 536, in _get_or_create_cached_value
+    return self._handle_cache_miss(cache, value_key, func_args, func_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\MSII\AppData\Roaming\Python\Python312\site-packages\streamlit\runtime\caching\cache_utils.py", line 598, in _handle_cache_miss
+    computed_value = self._info.func(*func_args, **func_kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Github-clone\ProSafe---Smart-Helmet-System\ProSafe-ML\app.py", line 61, in load_predictor
+    return SafetyPredictor.load_named(model_name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Github-clone\ProSafe---Smart-Helmet-System\ProSafe-ML\src\predict.py", line 88, in load_named
+    model=joblib.load(entry["path"]),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\joblib\numpy_pickle.py", line 650, in load
+    with open(filename, 'rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'E:\\SLIIT materials\\Research - 2026\\ProSafe - ML\\models\\xgboost.pkl'
+C:\Python312\Lib\pickle.py:1710: UserWarning: [11:25:59] WARNING: C:\actions-runner\_work\xgboost\xgboost\src\data\../common/error_msg.h:82: If you are loading a serialized model (like pickle in Python, RDS in R) or
+configuration generated by an older version of XGBoost, please export the model by calling
+`Booster.save_model` from that version first, then load it back in current version. See:
+
+    https://xgboost.readthedocs.io/en/stable/tutorials/saving_model.html
+
+for more details about differences between saving model and serializing.
+
+  setstate(state)
+C:\Python312\Lib\site-packages\sklearn\base.py:380: InconsistentVersionWarning: Trying to unpickle estimator StandardScaler from version 1.8.0 when using version 1.6.1. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+C:\Python312\Lib\site-packages\sklearn\base.py:380: InconsistentVersionWarning: Trying to unpickle estimator LabelEncoder from version 1.8.0 when using version 1.6.1. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+2026-09-01 11:26:00.514 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-09-01 14:04:13.378 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.

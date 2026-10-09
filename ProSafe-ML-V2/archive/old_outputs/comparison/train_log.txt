@@ -1,0 +1,39 @@
+========================================================================
+STAGE 1  candidate comparison (leave-one-worker-out, 5 development workers)
+========================================================================
+  CORE     Logistic Regression  macroF1=0.5752  critRecall=0.8351  balAcc=0.7221  crit->safe=0.0000  (3s)
+  CORE     Random Forest        macroF1=0.5755  critRecall=0.0412  balAcc=0.5782  crit->safe=0.0000  (17s)
+  CORE     XGBoost              macroF1=0.5924  critRecall=0.1109  balAcc=0.5947  crit->safe=0.0095  (15s)
+  CORE     SVM                  macroF1=0.5193  critRecall=0.0585  balAcc=0.5457  crit->safe=0.0106  (30s)
+  EXTENDED Logistic Regression  macroF1=0.6594  critRecall=0.8568  balAcc=0.7948  crit->safe=0.0000  (4s)
+  EXTENDED Random Forest        macroF1=0.5826  critRecall=0.0000  balAcc=0.6088  crit->safe=0.0000  (18s)
+  EXTENDED XGBoost              macroF1=0.6391  critRecall=0.1376  balAcc=0.6429  crit->safe=0.0000  (16s)
+  EXTENDED SVM                  macroF1=0.5641  critRecall=0.0351  balAcc=0.5851  crit->safe=0.0000  (22s)
+
+STAGE 2  selection: Ranked first under the pre-registered rule (EXTENDED Logistic Regression). EXTENDED beats best CORE by 0.0671 > 0.01.
+========================================================================
+STAGE 3  group-aware (LOWO) tuning: Logistic Regression / EXTENDED
+========================================================================
+  [01/7] macroF1=0.7058 critRecall=0.9047 {'C': 0.01, 'max_iter': 3000}
+  [02/7] macroF1=0.7052 critRecall=0.8880 {'C': 0.03, 'max_iter': 3000}
+  [03/7] macroF1=0.7097 critRecall=0.8719 {'C': 0.1, 'max_iter': 3000}
+  [04/7] macroF1=0.6904 critRecall=0.8635 {'C': 0.3, 'max_iter': 3000}
+  [05/7] macroF1=0.6594 critRecall=0.8568 {'C': 1.0, 'max_iter': 3000}
+  [06/7] macroF1=0.6138 critRecall=0.8518 {'C': 3.0, 'max_iter': 3000}
+  [07/7] macroF1=0.6040 critRecall=0.8267 {'C': 10.0, 'max_iter': 3000}
+
+  tuning result: search_01 (macro F1 0.7058 vs default 0.6594)
+
+STAGE 4  configuration FROZEN -> E:\Github-clone\ProSafe---Smart-Helmet-System\ProSafe-ML-V2\models\frozen_config.json
+========================================================================
+STAGE 5  production candidate: frozen config on W_001 + all synthetic
+========================================================================
+  Logistic Regression  fitted in 0.3s  use_scaled=True
+  Random Forest        fitted in 4.5s  use_scaled=False
+  XGBoost              fitted in 3.7s  use_scaled=False
+  SVM                  fitted in 35.1s  use_scaled=True
+
+  best_model.pkl = Logistic Regression (EXTENDED, 38 features); registry of 4 models saved
+
+Done. Next: python src/evaluate.py
+exit=0

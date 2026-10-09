@@ -5,6 +5,7 @@ const { USER_ROLES } = require("../constants/roles");
 const { calculatePhysiologicalDeviations } = require("./deviationService");
 const sensorRanges = require("../config/sensorRanges");
 const { timezone } = require("../config/appConfig");
+const { statusFields } = require("./operationalStateService");
 
 const DAYS = 7;
 
@@ -205,13 +206,18 @@ async function getSafetyPredictionHistory(userId) {
     // comes from HelmetData directly. Pre-filtered to the last 2 days on
     // the existing {workerId,timestamp} index before the exact local-day
     // match, so no new index is needed.
+    // Accepted (smoothed) predictions AND UNCERTAIN samples, so the timeline
+    // shows when no trustworthy decision existed instead of stretching the
+    // previous state over it.
     HelmetData.aggregate([
       {
         $match: {
           workerId: user.userId,
           timestamp: { $gte: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) },
-          "prediction.accepted": true,
-          "prediction.smoothedState": { $ne: null },
+          $or: [
+            { "prediction.accepted": true, "prediction.smoothedState": { $ne: null } },
+            { "prediction.systemState": "UNCERTAIN" },
+          ],
         },
       },
       {
@@ -221,7 +227,14 @@ async function getSafetyPredictionHistory(userId) {
       },
       { $match: { localDate: new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(new Date()) } },
       { $sort: { timestamp: 1 } },
-      { $project: { _id: 0, timestamp: 1, state: "$prediction.smoothedState", confidence: "$prediction.confidence" } },
+      {
+        $project: {
+          _id: 0,
+          timestamp: 1,
+          state: { $cond: [{ $eq: ["$prediction.systemState", "UNCERTAIN"] }, "UNCERTAIN", "$prediction.smoothedState"] },
+          confidence: { $cond: [{ $eq: ["$prediction.systemState", "UNCERTAIN"] }, null, "$prediction.confidence"] },
+        },
+      },
     ]),
   ]);
 
@@ -232,8 +245,7 @@ async function getSafetyPredictionHistory(userId) {
     ok: true,
     status: 200,
     body: {
-      currentRiskState: state ? state.currentRiskState : null,
-      emergencyActive: state ? state.emergencyActive : false,
+      ...statusFields(state),
       latestPrediction: latestAccepted
         ? { state: latestAccepted.riskLevel, confidence: latestAccepted.confidence, timestamp: latestAccepted.at }
         : null,

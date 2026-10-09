@@ -40,6 +40,9 @@ export function EditUserPage() {
         role: values.role,
         address: values.address,
         helmetId: values.helmetId || "",
+        // Worker-only; "" clears (and is what an Admin always sends).
+        baselineHeartRate: values.role === "WORKER" ? values.baselineHeartRate : "",
+        baselineBodyTemperature: values.role === "WORKER" ? values.baselineBodyTemperature : "",
       };
       if (values.password) fields.password = values.password;
 

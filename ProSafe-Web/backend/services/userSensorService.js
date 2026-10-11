@@ -160,34 +160,48 @@ async function getEnvironmentalSensorHistory(userId, sensorKey) {
   };
 }
 
-// Consecutive accepted predictions with the same smoothed state collapse
-// into one timeline segment instead of sending up to ~1440 points/day to
-// the browser, while still preserving every state transition (#30).
+// Consecutive points with the same state collapse into one timeline segment
+// instead of sending thousands of 1 Hz points to the browser, while still
+// preserving every state transition (#30). A new segment also starts when
+// - an UNCERTAIN period changes reason (so the reason shown is accurate), or
+// - no data arrived for longer than TIMELINE_GAP_SECONDS (helmet offline):
+//   the trend chart must not draw one continuous state across missing data.
+// The gap limit is far above the 1 Hz sampling (and the old 60-s packets).
+const TIMELINE_GAP_SECONDS = 600;
+
 function compressPredictionTimeline(points) {
   const segments = [];
 
   for (const point of points) {
     const last = segments[segments.length - 1];
-    if (last && last.state === point.state) {
+    const contiguous = last && new Date(point.timestamp) - new Date(last.to) <= TIMELINE_GAP_SECONDS * 1000;
+    const sameReason = point.state !== "UNCERTAIN" || (last && last.uncertainReason === (point.uncertainReason ?? null));
+    if (last && contiguous && last.state === point.state && sameReason) {
       last.to = point.timestamp;
       last._confidenceSum += point.confidence ?? 0;
       last._confidenceCount += point.confidence != null ? 1 : 0;
       last.pointCount += 1;
+      if (point.dataQuality === "IMPUTED") last._imputed += 1;
     } else {
       segments.push({
         state: point.state,
         from: point.timestamp,
         to: point.timestamp,
         pointCount: 1,
+        uncertainReason: point.state === "UNCERTAIN" ? point.uncertainReason ?? null : null,
         _confidenceSum: point.confidence ?? 0,
         _confidenceCount: point.confidence != null ? 1 : 0,
+        _imputed: point.dataQuality === "IMPUTED" ? 1 : 0,
       });
     }
   }
 
-  return segments.map(({ _confidenceSum, _confidenceCount, ...segment }) => ({
+  return segments.map(({ _confidenceSum, _confidenceCount, _imputed, ...segment }) => ({
     ...segment,
     avgConfidence: _confidenceCount ? round(_confidenceSum / _confidenceCount, 4) : null,
+    // VALID / IMPUTED (some samples used a briefly held sensor value) /
+    // UNCERTAIN; null for legacy v1 records without a quality field.
+    dataQuality: segment.state === "UNCERTAIN" ? "UNCERTAIN" : _imputed ? "IMPUTED" : segment.state ? "VALID" : null,
   }));
 }
 
@@ -233,6 +247,8 @@ async function getSafetyPredictionHistory(userId) {
           timestamp: 1,
           state: { $cond: [{ $eq: ["$prediction.systemState", "UNCERTAIN"] }, "UNCERTAIN", "$prediction.smoothedState"] },
           confidence: { $cond: [{ $eq: ["$prediction.systemState", "UNCERTAIN"] }, null, "$prediction.confidence"] },
+          dataQuality: "$prediction.dataQuality",
+          uncertainReason: "$prediction.uncertainReason",
         },
       },
     ]),
@@ -250,12 +266,16 @@ async function getSafetyPredictionHistory(userId) {
         ? { state: latestAccepted.riskLevel, confidence: latestAccepted.confidence, timestamp: latestAccepted.at }
         : null,
       todayHistory: compressPredictionTimeline(todayPackets),
+      // Lets the client extend/split segments with live points by the same rule.
+      timelineGapSeconds: TIMELINE_GAP_SECONDS,
     },
   };
 }
 
 module.exports = {
   authorizeTarget,
+  compressPredictionTimeline,
+  TIMELINE_GAP_SECONDS,
   getPersonalizedSensorHistory,
   getEnvironmentalSensorHistory,
   getSafetyPredictionHistory,

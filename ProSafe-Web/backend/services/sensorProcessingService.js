@@ -12,6 +12,7 @@ const { sendRiskCommand, ledStateFor } = require("./helmetCommandService");
 const { computeOperationalState } = require("./operationalStateService");
 const notificationService = require("./notificationService");
 const criticalBackstop = require("./criticalBackstopService");
+const liveUpdateService = require("./liveUpdateService");
 
 // Normal-condition pipeline for one helmet upload (a batch of 1 Hz samples,
 // or one legacy single-sample packet):
@@ -290,6 +291,11 @@ async function processSamples({ helmetId, workerId, samples, format }) {
   // never a SAFE fallback.
   const ledState = ledStateFor(state);
   await sendRiskCommand(helmetId, ledState);
+
+  // Live update for open dashboards / modals (worker + admins only). Sent
+  // after everything is persisted, so a client refetching on this event
+  // always sees the same data the event describes.
+  liveUpdateService.publishWorkerUpdate({ workerId, helmetId, state, docs, ledState });
 
   const latest = docs[docs.length - 1];
   return {

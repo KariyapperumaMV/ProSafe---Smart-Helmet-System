@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ProSafe | ML-Based Smart Helmet for Personalized Construction Monitoring</title>
+    <meta
+      name="description"
+      content="ProSafe is a final-year research project at SLIIT (R26-SE-042): an ESP32 smart helmet, Node.js backend, Flask ML service and React web application that combine environmental and physiological sensing with worker-specific baselines to classify construction worker safety risk in near real time."
+    />
+    <meta name="author" content="Methya Vosadi Kariyapperuma" />
+    <meta name="theme-color" content="#060a10" />
+    <meta name="color-scheme" content="dark" />
+
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="ProSafe Research" />
+    <meta property="og:title" content="ProSafe: Machine Learning-Based Smart Helmet for Personalized Construction Monitoring" />
+    <meta
+      property="og:description"
+      content="Final-year research project (SLIIT, R26-SE-042) combining environmental and physiological sensing, worker-specific baselines and machine learning for near-real-time construction safety monitoring."
+    />
+    <meta property="og:image" content="/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:url" content="/" />
+    <meta name="twitter:card" content="summary_large_image" />
+  </head>
+  <body>
+    <noscript>
+      <div style="padding:24px;font-family:system-ui,sans-serif;color:#eef4f2;background:#060a10">
+        The ProSafe research website needs JavaScript to display its content.
+      </div>
+    </noscript>
+
+    <!--
+      Static copy of the contact form so Netlify Forms can detect it at deploy
+      time. The visible form is rendered by React (src/sections/Contact) and
+      posts the same field names to Netlify.
+    -->
+    <form name="contact" data-netlify="true" netlify-honeypot="bot-field" hidden>
+      <input type="text" name="name" />
+      <input type="email" name="email" />
+      <input type="text" name="affiliation" />
+      <input type="text" name="subject" />
+      <textarea name="message"></textarea>
+      <input type="text" name="bot-field" />
+    </form>
+
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

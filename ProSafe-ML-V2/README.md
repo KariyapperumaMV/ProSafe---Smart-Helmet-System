@@ -51,6 +51,35 @@ feature vector, for testing). `/health` answers 503 "unhealthy" if any model oth
 Per-worker streaming state is held in process memory: run a single process, and expect a restart to put every worker
 back into warm-up (UNCERTAIN).
 
+## Streamlit demo: ProSafe V2 Safety Predictor
+
+```
+python -m streamlit run app.py
+```
+
+A manual live-prediction demo of the **real** V2 path, the same one the backend uses: raw readings + worker baselines
+→ `ProSafeInferencePipeline` → `StreamingPreprocessor` (38 EXTENDED features) → UNCERTAIN gate → XGBoost. Nothing is
+recomputed in the app.
+
+* **Inputs:** Worker Baseline (heart rate, body temperature), Environmental (ambient temperature, UV index, gas sensor
+  value in sensor units, not ppm, noise) and Physiological (body temperature, heart rate). Ranges are the V2
+  per-channel plausibility ranges. Quick inputs = median readings of real W_001 seconds labelled Safe / Warning /
+  Critical (with W_001's baselines).
+* **Baselines** are registered as the worker profile before every reading, exactly as `serve.py` does, and are never
+  model features. Changing them restarts that worker's session (`BASELINE_CHANGED`), as in production.
+* **History is real.** *Process 1 Second* adds one timestamped reading to the worker's streaming state, which
+  persists across reruns. *Simulate* (1-300 s) is demo acceleration: the same values, once per simulated second,
+  through the same call, with nothing skipped or invented. A new session is UNCERTAIN (`SENSOR_WARMUP`, 180 s on a
+  cold start; `INSUFFICIENT_HISTORY`, `GAS_BASELINE_UNAVAILABLE`) until the gate says READY.
+* **Result:** a large SAFE / WARNING / CRITICAL / UNCERTAIN banner, confidence, data quality, readiness, the reasons
+  when UNCERTAIN (no probabilities), and class probabilities when READY. Personalized deviations come from the
+  preprocessor's own output. Expanders show *Session details* (samples, elapsed time, gas baseline state),
+  *V2 Generated Features* (grouped: raw, deviations, gas ratio, rolling, trends, exposure, noise dose) and
+  *Status periods*.
+* **Reset Session** ends only the demo worker's session (warm restart: 20 samples). *Start new workday* also resets
+  the noise dose and forces the cold-start warm-up.
+* Read-only model information is in the sidebar. There is no model switching: the experiments are finished.
+
 ## The three experiments (how the model was chosen)
 
 | # | Train | Test |
@@ -83,6 +112,7 @@ src/
   plot_style.py               chart style
 tests/
   test_production_integration.py  promoted artifact parity, feature contract, baseline lifecycle, raw replay, HTTP contract
+  test_streamlit_app.py           drives app.py headlessly (Streamlit AppTest)
   test_streaming_preprocessor.py  warm-up, isolation, sessions, missing data, gate, pipeline, HTTP service
   test_preprocessing_parity.py    online features reproduce the offline training features (--report writes a report)
 models/
@@ -91,7 +121,7 @@ models/
 outputs/                      experiment results
 archive/                      earlier outputs, the previous model candidate, retired scripts (see archive/README.md)
 serve.py                      the decision service (Flask, port 8001)
-app.py                        Streamlit demo (model-ready prediction and raw-stream replay)
+app.py                        Streamlit demo: ProSafe V2 Safety Predictor (manual readings through the real pipeline)
 BACKEND_INTEGRATION_V2.md     the implemented end-to-end integration
 PREPROCESSING_V2_DESIGN.md    V2 preprocessing design (rules, offline vs online, WorkerState, UNCERTAIN, resets)
 CURRENT_SYSTEM_FLOW.md        the pre-integration (v1) flow, historical
@@ -102,6 +132,7 @@ requirements.txt
 
 ```
 python tests/test_production_integration.py
+python tests/test_streamlit_app.py
 python tests/test_streaming_preprocessor.py
 python tests/test_preprocessing_parity.py
 ```

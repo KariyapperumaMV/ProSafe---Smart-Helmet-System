@@ -35,7 +35,8 @@ export async function markAllNotificationsRead() {
 // used here). Resolves once the stream ends — naturally (server closed it),
 // on a network failure, or because `signal` was aborted — the caller
 // (useNotifications) owns the reconnect decision, not this function.
-export async function streamNotifications({ onEvent, signal }) {
+// `onOpen` fires once the server has accepted the stream (HTTP 200).
+export async function streamNotifications({ onEvent, onOpen, signal }) {
   const token = localStorage.getItem("prosafe_token");
   const response = await fetch(`${BASE_URL}/api/notifications/stream`, {
     headers: {
@@ -48,6 +49,7 @@ export async function streamNotifications({ onEvent, signal }) {
   if (!response.ok || !response.body) {
     throw new Error(`Notification stream failed: HTTP ${response.status}`);
   }
+  onOpen?.();
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();

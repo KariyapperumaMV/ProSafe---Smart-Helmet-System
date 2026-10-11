@@ -2,6 +2,7 @@ const WorkerProcessingState = require("../models/WorkerProcessingState");
 const Alert = require("../models/Alert");
 const { resolveWorkerId } = require("./baselineService");
 const notificationService = require("./notificationService");
+const liveUpdateService = require("./liveUpdateService");
 const User = require("../models/User");
 
 // Best-effort worker display name for notification text — falls back to
@@ -84,6 +85,8 @@ async function activateEmergency({ helmetId, workerId: suppliedWorkerId, timesta
     relatedEntityId: String(alert._id),
     metadata: { workerId, helmetId },
   });
+
+  await liveUpdateService.publishWorkerStatus(workerId, helmetId);
 
   return { ok: true, created: true, workerId, alert };
 }
@@ -199,6 +202,8 @@ async function acknowledgeReset(helmetId) {
       metadata: { helmetId },
     }),
   ]);
+
+  await liveUpdateService.publishWorkerStatus(resolution.workerId, helmetId);
 
   return { ok: true, alreadyCleared: false, workerId: resolution.workerId };
 }

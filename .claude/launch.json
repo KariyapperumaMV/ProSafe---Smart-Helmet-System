@@ -14,6 +14,27 @@
       "runtimeArgs": ["run", "dev"],
       "cwd": "ProSafe-Web/frontend",
       "port": 5173
+    },
+    {
+      "name": "ml-v2-streamlit",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "streamlit", "run", "app.py", "--server.port", "8501", "--server.headless", "true"],
+      "cwd": "ProSafe-ML-V2",
+      "port": 8501
+    },
+    {
+      "name": "research-website",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "5180", "--strictPort"],
+      "cwd": "ProSafe-Website",
+      "port": 5180
+    },
+    {
+      "name": "research-website-preview",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "preview", "--", "--port", "4180", "--strictPort"],
+      "cwd": "ProSafe-Website",
+      "port": 4180
     }
   ]
 }

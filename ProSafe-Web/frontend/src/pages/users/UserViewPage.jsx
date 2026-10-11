@@ -9,6 +9,8 @@ import { UserDetailView } from "../../components/users/UserDetailView";
 import { DeleteUserModal } from "../../components/users/DeleteUserModal";
 import { getUserById, deleteUser } from "../../api/userApi";
 import { useToast } from "../../context/ToastContext";
+import { useLiveWorkerUpdates } from "../../hooks/useLiveWorkerUpdates";
+import { applyLiveUpdateToUserDetail } from "../../utils/liveMerge";
 
 export function UserViewPage() {
   const { id } = useParams();
@@ -31,6 +33,12 @@ export function UserViewPage() {
   }, [id]);
 
   useEffect(fetchUser, [fetchUser]);
+
+  // Live status + latest sensor values for this worker (initial state above
+  // comes from REST; after a stream reconnect, refetch quietly).
+  useLiveWorkerUpdates(data?.user?.role === "WORKER" ? id : null, (event) => setData((prev) => applyLiveUpdateToUserDetail(prev, event)), {
+    onReconnect: () => getUserById(id).then(setData).catch(() => {}),
+  });
 
   async function handleConfirmDelete() {
     setDeleting(true);

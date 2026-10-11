@@ -1,14 +1,24 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useLiveWorkerUpdates, useThrottledCallback } from "./useLiveWorkerUpdates";
 
-// Normal helmet packets arrive ~60s apart — polling faster wouldn't surface
-// anything new, and WebSockets would be a lot of new architecture for a
-// single page (#14 in the analysis: explicitly deferred).
+// Fallback poll only: live worker updates (SSE) keep dashboards current as
+// soon as the backend processes new helmet data.
 const REFRESH_INTERVAL_MS = 60 * 1000;
+// Refetch-on-event is throttled so a 1 Hz helmet stream (or many workers)
+// can't turn into a request storm / constant re-render.
+export const LIVE_REFETCH_MIN_MS = 5 * 1000;
 
 // Fetch immediately on mount, then on a fixed interval, stopping cleanly on
 // unmount. Shared by AdminDashboard/WorkerDashboard so the polling/cleanup
 // logic exists — and is tested — in exactly one place.
-export function useDashboardData(fetchFn) {
+//
+// live (optional): { workerId, applyUpdate }
+//   workerId    - worker to follow (or ANY_WORKER)
+//   applyUpdate - (data, event) => data: merge the event locally (no
+//                 request); without it a matching event triggers a
+//                 throttled refetch instead
+// After a stream reconnect the data is always refetched.
+export function useDashboardData(fetchFn, live = null) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -28,6 +38,18 @@ export function useDashboardData(fetchFn) {
       })
       .catch((err) => setError(err));
   }, []);
+
+  const refetchThrottled = useThrottledCallback(load, LIVE_REFETCH_MIN_MS);
+  const applyRef = useRef(live?.applyUpdate);
+  applyRef.current = live?.applyUpdate;
+  useLiveWorkerUpdates(
+    live?.workerId || null,
+    (event) => {
+      if (applyRef.current) setData((prev) => applyRef.current(prev, event));
+      else refetchThrottled();
+    },
+    { onReconnect: load }
+  );
 
   useEffect(() => {
     let cancelled = false;

@@ -868,6 +868,84 @@ button {
 .ps-timeline-uncertain {
   background: repeating-linear-gradient(135deg, var(--ps-uncertain) 0 3px, var(--ps-text-faint) 3px 6px);
 }
+/* ---------- Safety Trend chart (SafetyPredictionModal) ---------- */
+.ps-trend-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--ps-space-2);
+}
+.ps-trend-header .ps-detail-section-title {
+  margin: 0;
+}
+.ps-trend {
+  width: 100%;
+  min-width: 0;
+  /* Never widen the modal, even before the chart re-measures after a resize. */
+  overflow: hidden;
+}
+.ps-trend svg {
+  overflow: visible;
+}
+.ps-trend-legend {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-size: 0.76rem;
+  color: var(--ps-text-muted);
+}
+.ps-trend-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ps-trend-swatch {
+  width: 14px;
+  height: 4px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.ps-trend-swatch-uncertain {
+  height: 10px;
+  background: repeating-linear-gradient(135deg, var(--ps-uncertain) 0 2px, var(--ps-uncertain-soft) 2px 4px);
+  border: 1px dashed var(--ps-uncertain);
+}
+.ps-trend-tooltip {
+  background: var(--ps-surface-solid);
+  border: 1px solid var(--ps-border-strong);
+  border-radius: var(--ps-radius-sm);
+  padding: 8px 10px;
+  font-size: 0.78rem;
+  color: var(--ps-text-muted);
+  box-shadow: var(--ps-shadow);
+  max-width: 220px;
+}
+.ps-trend-tooltip-time {
+  color: var(--ps-text);
+  font-variant-numeric: tabular-nums;
+}
+.ps-trend-tooltip-state {
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  margin: 2px 0;
+}
+.ps-trend-state-safe { color: var(--ps-green); }
+.ps-trend-state-warning { color: var(--ps-warning); }
+.ps-trend-state-critical { color: var(--ps-danger); }
+.ps-trend-state-uncertain { color: var(--ps-uncertain); }
+.ps-trend-subtitle {
+  margin: var(--ps-space-2) 0 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ps-text-muted);
+}
+.ps-timeline-uncertain.ps-timeline-dot {
+  background: var(--ps-uncertain);
+}
 .ps-timeline-legend-list {
   list-style: none;
   margin: 0;

@@ -1,0 +1,221 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * ProSafe design tokens.
+ * Values are taken from the ProSafe web application (ProSafe-Web/frontend/src/theme.css)
+ * and stored as RGB channels so Tailwind can apply opacity, e.g. bg-brand/15.
+ */
+:root {
+  --ps-bg: 6 10 16;             /* #060a10  page background */
+  --ps-surface: 13 21 28;       /* #0d151c  solid surface */
+  --ps-raised: 21 34 43;        /* rgba(21,34,43) raised surface */
+  --ps-glass: 15 26 33;         /* rgba(15,26,33,.72) glass card */
+  --ps-line: 148 214 200;       /* border tint, used at 14% / 28% */
+  --ps-text: 238 244 242;       /* #eef4f2 */
+  --ps-text-muted: 147 163 168; /* #93a3a8 */
+  --ps-text-faint: 95 111 116;  /* #5f6f74 decorative only */
+  --ps-green: 34 197 94;        /* #22c55e brand + SAFE */
+  --ps-green-strong: 22 163 74; /* #16a34a */
+  --ps-cyan: 45 212 191;        /* #2dd4bf */
+  --ps-warning: 245 158 11;     /* #f59e0b WARNING */
+  --ps-critical: 249 115 22;    /* #f97316 CRITICAL */
+  --ps-danger: 239 68 68;       /* #ef4444 EMERGENCY */
+  --ps-uncertain: 163 177 182;  /* #a3b1b6 UNCERTAIN (dashboard) */
+  --ps-info: 59 130 246;        /* #3b82f6 blue helmet LED for UNCERTAIN */
+  --ps-chart-highlight: 14 165 165; /* #0ea5a5 validated against the surface */
+  --ps-chart-neutral: 86 98 107;    /* #56626b */
+
+  --header-h: 72px;
+  color-scheme: dark;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: calc(var(--header-h) + 16px);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-bg font-sans text-ink antialiased;
+    min-width: 320px;
+    background:
+      radial-gradient(1100px 600px at 8% -6%, rgba(34, 197, 94, 0.14), transparent 60%),
+      radial-gradient(900px 500px at 100% 18%, rgba(14, 165, 165, 0.12), transparent 55%),
+      rgb(var(--ps-bg));
+    background-attachment: fixed;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4 {
+    @apply text-ink;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  p { text-wrap: pretty; }
+
+  ::selection { background: rgba(34, 197, 94, 0.35); color: #fff; }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--ps-green));
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 214, 200, 0.3) transparent;
+  }
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-content px-4 sm:px-6 lg:px-8;
+  }
+
+  .card {
+    background: rgb(var(--ps-glass) / 0.72);
+    border: 1px solid rgb(var(--ps-line) / 0.14);
+    border-radius: 20px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(14px);
+  }
+  .card-raised {
+    background: rgb(var(--ps-raised) / 0.85);
+    border: 1px solid rgb(var(--ps-line) / 0.14);
+    border-radius: 14px;
+  }
+  .card-hover {
+    transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .card-hover:hover {
+    border-color: rgb(var(--ps-line) / 0.32);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm border border-transparent px-[18px] py-[10px] text-[0.92rem] font-semibold;
+    transition: filter 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, transform 0.05s ease;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn-primary {
+    color: #06210f;
+    background: linear-gradient(180deg, #4ade80, rgb(var(--ps-green-strong)));
+    box-shadow: 0 4px 16px rgba(34, 197, 94, 0.25);
+  }
+  .btn-primary:hover { filter: brightness(1.08); }
+  .btn-secondary {
+    @apply text-ink;
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgb(var(--ps-line) / 0.28);
+  }
+  .btn-secondary:hover { background: rgba(255, 255, 255, 0.08); }
+  .btn-sm { @apply px-3 py-1.5 text-[0.82rem]; }
+
+  .badge {
+    @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-[0.72rem] font-bold uppercase tracking-[0.03em];
+  }
+  .badge-safe { color: rgb(var(--ps-green)); background: rgb(var(--ps-green) / 0.14); border: 1px solid rgb(var(--ps-green) / 0.3); }
+  .badge-warning { color: rgb(var(--ps-warning)); background: rgb(var(--ps-warning) / 0.14); border: 1px solid rgb(var(--ps-warning) / 0.3); }
+  .badge-critical { color: rgb(var(--ps-critical)); background: rgb(var(--ps-critical) / 0.14); border: 1px solid rgb(var(--ps-critical) / 0.32); }
+  .badge-danger { color: rgb(var(--ps-danger)); background: rgb(var(--ps-danger) / 0.14); border: 1px solid rgb(var(--ps-danger) / 0.3); }
+  .badge-uncertain { color: rgb(var(--ps-uncertain)); background: rgb(var(--ps-uncertain) / 0.12); border: 1px dashed rgb(var(--ps-uncertain)); }
+  .badge-info { color: #93c5fd; background: rgb(var(--ps-info) / 0.14); border: 1px solid rgb(var(--ps-info) / 0.35); }
+  .badge-neutral { color: rgb(var(--ps-text-muted)); background: rgba(255, 255, 255, 0.06); border: 1px solid rgb(var(--ps-line) / 0.28); }
+
+  .eyebrow {
+    @apply inline-flex items-center gap-2 rounded-full px-3 py-1 text-[0.72rem] font-bold uppercase tracking-[0.14em] text-brand;
+    background: rgb(var(--ps-green) / 0.1);
+    border: 1px solid rgb(var(--ps-green) / 0.25);
+  }
+
+  .section-title {
+    @apply text-[1.85rem] font-bold sm:text-[2.25rem];
+  }
+  .subsection-title {
+    @apply text-[1.5rem] font-bold sm:text-[1.75rem];
+  }
+  .lead {
+    @apply text-[1.02rem] leading-relaxed text-muted sm:text-[1.08rem];
+  }
+  .body-text {
+    @apply text-[0.98rem] leading-[1.75] text-muted;
+  }
+  .body-text strong { @apply font-semibold text-ink; }
+
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgb(var(--ps-line) / 0.22), transparent);
+  }
+
+  .data-table {
+    @apply w-full border-collapse text-left text-[0.88rem];
+  }
+  .data-table th {
+    @apply border-b border-line/20 px-4 py-3 text-[0.74rem] font-bold uppercase tracking-wider text-muted;
+  }
+  .data-table td {
+    @apply border-b border-line/10 px-4 py-3 align-top text-muted;
+  }
+  .data-table tbody tr:last-child td { border-bottom: 0; }
+  .data-table td.cell-strong { @apply font-semibold text-ink; }
+
+  .cite {
+    @apply ml-0.5 inline-flex rounded px-1 align-baseline text-[0.78em] font-semibold text-cyan no-underline;
+    background: rgb(var(--ps-cyan) / 0.08);
+  }
+  .cite:hover { background: rgb(var(--ps-cyan) / 0.18); }
+
+  .hero-grid {
+    background-image:
+      linear-gradient(rgb(var(--ps-line) / 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--ps-line) / 0.06) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 80% 70% at 50% 30%, #000 30%, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 30%, #000 30%, transparent 75%);
+  }
+}
+
+/* Scroll reveal: content is visible by default and only animates when the
+   observer is available (html.reveal-ready is set in main.jsx). */
+.reveal-ready .reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.reveal-ready .reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgb(var(--ps-green) / 0.45); }
+  70% { box-shadow: 0 0 0 10px rgb(var(--ps-green) / 0); }
+  100% { box-shadow: 0 0 0 0 rgb(var(--ps-green) / 0); }
+}
+.pulse-dot { animation: pulse-ring 2.4s ease-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .reveal-ready .reveal { opacity: 1; transform: none; }
+}
+
+@media (forced-colors: active) {
+  .card, .card-raised { border: 1px solid CanvasText; }
+}
+
+@media print {
+  .reveal-ready .reveal { opacity: 1 !important; transform: none !important; }
+  header, .fixed { position: static !important; }
+}

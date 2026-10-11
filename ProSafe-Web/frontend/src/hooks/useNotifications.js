@@ -7,6 +7,7 @@ import {
   markNotificationRead,
   streamNotifications,
 } from "../api/notificationApi";
+import { emitLive } from "../live/liveUpdates";
 
 // Modest, capped backoff for an unexpected disconnect — not an elaborate
 // message broker, just enough to avoid hammering the server if it's
@@ -75,6 +76,13 @@ export function useNotifications() {
   userRef.current = user;
 
   const handleEvent = useCallback((event) => {
+    // Live worker updates share this stream but are not inbox items: they go
+    // straight to the live-update bus (no bell entry, no unread count, no
+    // re-render of this provider's consumers).
+    if (event.kind === "WORKER_UPDATE") {
+      emitLive(event);
+      return;
+    }
     setNotifications((prev) => [event, ...prev].slice(0, DROPDOWN_LIMIT));
     if (!event.read) setUnreadCount((prev) => prev + 1);
     setLastEvent(event);
@@ -122,12 +130,20 @@ export function useNotifications() {
     let stopped = false;
     let connecting = false; // guards against overlapping connect() calls
     let backoffIndex = 0;
+    let everConnected = false;
+
+    // Live views refetch over REST after a REconnect: anything published
+    // while the stream was down is not replayed.
+    function handleOpen() {
+      emitLive({ kind: "STREAM_CONNECTED", reconnected: everConnected });
+      everConnected = true;
+    }
 
     async function connect() {
       if (stopped || connecting) return;
       connecting = true;
       try {
-        await streamNotifications({ onEvent: handleEvent, signal: controller.signal });
+        await streamNotifications({ onEvent: handleEvent, onOpen: handleOpen, signal: controller.signal });
         backoffIndex = 0; // clean server-side close — treat as a fresh start
       } catch (err) {
         if (err?.name === "AbortError" || stopped) return;

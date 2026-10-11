@@ -9,6 +9,12 @@ import { LatestSensorsCard } from "../../components/dashboard/LatestSensorsCard"
 import { RecentAlertsCard } from "../../components/dashboard/RecentAlertsCard";
 import { useDashboardData } from "../../hooks/useDashboardData";
 import { getWorkerDashboard } from "../../api/dashboardApi";
+import { ANY_WORKER } from "../../hooks/useLiveWorkerUpdates";
+import { applyLiveUpdateToWorkerDashboard } from "../../utils/liveMerge";
+
+// The backend only streams a worker their OWN updates; applyLiveUpdateToWorkerDashboard
+// additionally ignores any event whose workerId differs from this dashboard's user.
+const LIVE = { workerId: ANY_WORKER, applyUpdate: applyLiveUpdateToWorkerDashboard };
 
 // Deliberately reduced (#9/#16 in the analysis) — no organization-wide
 // metrics anywhere here, only this worker's own state. The backend
@@ -16,7 +22,8 @@ import { getWorkerDashboard } from "../../api/dashboardApi";
 // token), so there's nothing org-wide to accidentally render even if this
 // component were misused.
 export function WorkerDashboard() {
-  const { data, loading, error } = useDashboardData(getWorkerDashboard);
+  // Status card and sensor values follow this worker's live updates directly.
+  const { data, loading, error } = useDashboardData(getWorkerDashboard, LIVE);
 
   if (loading && !data) {
     return (

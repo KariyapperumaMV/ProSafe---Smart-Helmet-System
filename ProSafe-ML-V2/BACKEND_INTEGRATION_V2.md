@@ -22,8 +22,10 @@ Backend               session sync -> 0.70 confidence rule -> 5-vote smoothing (
    |                  -> WorkerProcessingState -> LED command (SAFE / WARNING / CRITICAL / UNCERTAIN)
    v
 MongoDB, notifications, helmet LED (polls GET /api/helmet/command/:helmetId every 5 s)
+   |  + live WORKER_UPDATE event on the existing SSE stream (worker + admins)
    v
-Frontend              status badges, dashboard counts, timeline, alerts: SAFE / WARNING / CRITICAL / UNCERTAIN
+Frontend              REST on open + live merge: status badges, sensor values, dashboard counts,
+                      Safety Trend chart, alerts: SAFE / WARNING / CRITICAL / UNCERTAIN
 ```
 
 Python V2 is the **single source of feature truth**: the backend computes no model feature, and nothing is
@@ -210,13 +212,59 @@ No retention policy was added; deciding one is a data-protection decision for th
 
 ## 8. Frontend
 
-UNCERTAIN is a grey state (`--ps-uncertain`, dashed badge, hatched timeline segments), shown with its reason. It
+UNCERTAIN is a grey state (`--ps-uncertain`, dashed badge, hatched trend bands), shown with its reason. It
 appears in `StatusBadge` (`RiskBadge`, `OperationalStatus`), `WorkerSafetyCard`, `CurrentConditionCard`, the user
-detail page, `HelmetDetailsModal`, `SafetyPredictionModal`, `PredictionTimelineChart`, and the `WorkerStatusSummary`
-"Uncertain" bucket. DATA_QUALITY alerts appear in `RecentAlertsCard` (filter, tone), `AlertDetailModal` (reason, since)
+detail page, `HelmetDetailsModal`, `SafetyPredictionModal` (Safety Trend + `SafetyHistoryList`), and the
+`WorkerStatusSummary` "Uncertain" bucket. Wording keeps the **confirmed safety state** (smoothed) separate from the
+**current data quality**: e.g. "WARNING · Data uncertain: sensor skin contact lost", or "UNCERTAIN · no reliable
+prediction (last confirmed: SAFE)". DATA_QUALITY alerts appear in `RecentAlertsCard` (filter, tone), `AlertDetailModal` (reason, since)
 and `NotificationBell`. The user Create/Edit form shows baseline inputs for Worker only (cleared when switching to
 Admin), and the detail view shows them ("Not set" when null). Gas is labelled "units", never ppm. The backend's
 gas display ranges came from the owner's ppm table; they are kept unchanged but labelled as uncalibrated sensor units.
+
+### Real-time updates (no browser refresh)
+
+* **Transport: the existing SSE stream** `GET /api/notifications/stream` (authenticated fetch, one connection per
+  tab, owned by `hooks/useNotifications`, reconnect with 2/5/10-s backoff). No new dependency, no Socket.IO.
+* **Backend events.** After every processed helmet upload `sensorProcessingService` calls
+  `liveUpdateService.publishWorkerUpdate` (and `emergencyService` does on emergency activation/resolution). The
+  event is sent after everything is persisted:
+  `{kind: "WORKER_UPDATE", workerId, helmetId, sentAt, status: {operationalState, currentRiskState, emergencyActive,
+  dataQualityState, dataUncertain, uncertainReason, uncertainSince}, ledState, latest: {timestamp, systemState,
+  predictedState, smoothedState, confidence, accepted, dataQuality, uncertainReason, sensors}, points: [one per
+  sample: {timestamp, state, systemState, confidence, dataQuality, uncertainReason}]}`.
+  It is delivered to the worker's own streams and every ADMIN stream only
+  (`notificationStream.publishWorkerUpdate`, role recorded at subscribe time). It carries no name, email, NIC,
+  phone or baselines. One event per upload, about every 5 s per helmet, carrying every sample of the batch.
+* **Frontend.** `useNotifications` routes `WORKER_UPDATE` events to a tiny module emitter (`live/liveUpdates.js`),
+  not into the bell/inbox and not through React context, so a 1 Hz stream re-renders only the subscribed
+  components. `hooks/useLiveWorkerUpdates(workerId | ANY_WORKER, onUpdate, {onReconnect})` filters by worker.
+  Pages load over REST first, then merge events (`utils/liveMerge.js`, newer-timestamp wins, duplicates ignored):
+  - user detail page and worker Profile: status badge and sensor cards merged locally;
+  - worker dashboard: status card and Latest Sensor Summary merged locally (no request);
+  - admin dashboard: counts/helmets/locations are server-computed, so any worker event triggers a refetch
+    throttled to one per 5 s;
+  - Current Condition & Guidance card: throttled (5 s) reload;
+  - Safety Prediction modal: header (status, latest accepted prediction, confidence, time) and the trend merged
+    locally while open;
+  - alerts lists keep refreshing on the existing NEW_ALERT / DATA_QUALITY_ALERT / emergency notifications.
+* **Reconnect.** Every successful (re)connection emits `STREAM_CONNECTED`. On a REconnect each live view refetches
+  over REST, because events sent while disconnected are not replayed. The 60-s polls remain as a fallback.
+
+### Safety Trend chart (Safety Prediction modal)
+
+* A step line (`type="stepAfter"`, Recharts, which was already installed) of the confirmed (smoothed) state over time.
+  SAFE = 0, WARNING = 1, CRITICAL = 2; the Y axis shows the labels Safe / Warning / Critical. A thin neutral path
+  carries the transitions, with green / amber / red overlays for the level periods.
+* **UNCERTAIN is not a level.** It has no y value, so the risk line breaks, and the period is drawn as a grey
+  hatched band. Safe → Uncertain → Warning is never joined by a line. No data for more than 10 minutes also breaks
+  the line (`TIMELINE_GAP_SECONDS = 600` server-side, the same rule client-side).
+* Data: `GET /api/users/:id/safety-predictions` returns today's history already grouped into periods (now also
+  carrying `uncertainReason`, `dataQuality` and `timelineGapSeconds`). While the modal is open, live per-sample
+  points extend the last period or start a new one (`utils/safetyTrend.mergeLivePoints`), so the chart only ever
+  holds a few points per state change, never one per second. Stored data are never discarded; this is rendering only.
+* Tooltip: time range, status, confidence and data quality; for UNCERTAIN, the reason. Range pills: Last 15 min /
+  **Last 1 hour** (default) / Today. Underneath, a compact grouped "Status periods" list (newest first, up to 30).
 
 ## 9. Retired / kept
 
@@ -240,6 +288,9 @@ gas display ranges came from the owner's ppm table; they are kept unchanged but 
 | `HELMET_SAMPLE_INTERVAL_SECONDS` / `HELMET_MAX_SAMPLES_PER_BATCH` | 1 / 600 | |
 | `DATA_QUALITY_ALERT_AFTER_SECONDS` / `DATA_QUALITY_ALERT_COOLDOWN_MINUTES` | 30 / 10 | |
 | `APP_TIMEZONE` | Asia/Colombo | site time sent to V2 |
+
+Real-time updates need no new environment variable: they use the existing authenticated SSE stream (single
+backend instance; several instances would need a shared pub/sub, see `services/notificationStream.js`).
 
 V2 service environment: `PORT` (8001), `PROSAFE_ENABLE_RAW_ENDPOINT` (1), `PROSAFE_EXPECTED_MODEL` (XGBoost),
 `PROSAFE_EXPECTED_FEATURE_SET` (EXTENDED), `PROSAFE_MAX_BATCH` (600).
@@ -265,7 +316,9 @@ Start order:
 | ML-V2 | `python tests/test_streaming_preprocessor.py`, `python tests/test_preprocessing_parity.py` | streaming rules, gate, online/offline feature parity |
 | backend | `npm test` | everything incl. `tests/v2Integration.test.js` (real mlService against a scripted fake V2: request contract, order, duplicates, warm-up, missing baseline + DATA_QUALITY, ML down, wrong model, low confidence, smoothing/session, timeline, guidance, backstop hook) and `tests/userBaselines.test.js` |
 | backend, live | `PROSAFE_V2_LIVE_URL=http://127.0.0.1:8001 npx jest tests/liveV2.e2e.test.js` | backend (in-memory MongoDB) -> **running** V2: CRUD with baselines, W_001 replays at 1 Hz, warm-up -> READY, baseline edit restarts the session, missing-baseline worker, elevated (Warning/Critical) segment with transition alerts and LED |
-| frontend | `npm test`, `npm run build` | baseline form fields/validation, UNCERTAIN display, existing suites |
+| backend | `tests/liveUpdates.test.js` | live WORKER_UPDATE after processing: payload fields, UNCERTAIN, scoping across two workers + admin, no personal data, emergency status event, timeline period rules |
+| ML-V2 | `python tests/test_streamlit_app.py` | Streamlit demo driven headlessly (AppTest): production model shown, inputs, single second UNCERTAIN without probabilities, session persistence, simulation to READY, Reset Session, elevated preset |
+| frontend | `npm test`, `npm run build` | baseline form fields/validation, UNCERTAIN display, live-update bus/hook, SSE routing + reconnect, live merges (two workers), dashboard live refetch/merge, Safety Prediction modal live behaviour, trend transformation (level mapping, UNCERTAIN gaps/bands, merge/dedupe, ranges), existing suites |
 | firmware | `pio run` | compiles (no hardware test) |
 
 ## 12. Open items

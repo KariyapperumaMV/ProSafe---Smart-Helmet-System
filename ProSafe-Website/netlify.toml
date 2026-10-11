@@ -1,0 +1,36 @@
+# Netlify configuration for the ProSafe research website.
+# When deploying from the parent ProSafe repository, set the Netlify
+# "Base directory" to ProSafe-Website so this file is used.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# The site is a single page that uses #section links, so no SPA rewrite is
+# needed. Unknown paths fall through to public/404.html.
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Frame-Options = "SAMEORIGIN"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/documents/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"
+
+[[headers]]
+  for = "/presentations/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"

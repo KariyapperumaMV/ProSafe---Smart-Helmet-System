@@ -10,9 +10,14 @@ import { HelmetHealthCard } from "../../components/dashboard/HelmetHealthCard";
 import { WorkerLocationCard } from "../../components/dashboard/WorkerLocationCard";
 import { useDashboardData } from "../../hooks/useDashboardData";
 import { getAdminDashboard } from "../../api/dashboardApi";
+import { ANY_WORKER } from "../../hooks/useLiveWorkerUpdates";
+
+// Counts, helmet health and locations are computed server-side, so any
+// worker's live update triggers a throttled refetch.
+const LIVE = { workerId: ANY_WORKER };
 
 export function AdminDashboard() {
-  const { data, loading, error } = useDashboardData(getAdminDashboard);
+  const { data, loading, error } = useDashboardData(getAdminDashboard, LIVE);
 
   if (loading && !data) {
     return (

@@ -1,137 +1,352 @@
 """
-Streamlit demo for ProSafe ML V2.
+ProSafe V2 Safety Predictor - manual live-prediction demo.
 
-  Tab 1  Model-ready prediction - pick any ML-ready row, see the V2 classifier output.
-  Tab 2  Raw-stream replay      - feed raw 1 Hz sensor values through the full V2
-                                  pipeline (streaming preprocessor -> quality gate ->
-                                  classifier) and watch UNCERTAIN warm-up, imputation
-                                  and SAFE / WARNING / CRITICAL decisions.
+Enter raw helmet readings and the worker's baselines; each processed second goes
+through the SAME path the backend uses:
 
-Run from the project root:
-    streamlit run app.py
+    raw reading + worker baselines
+      -> ProSafeInferencePipeline.process_raw
+      -> StreamingPreprocessor (per-worker state: windows, trends, exposure counters,
+         noise dose, session gas baseline) -> 38 EXTENDED features
+      -> UNCERTAIN gate -> XGBoost (only when READY)
+
+Nothing is recomputed here: features, deviations and diagnostics shown are the
+preprocessor's own output. The model needs history (30/60/300-s windows, a 180-s
+cold-start warm-up, a session gas baseline), so a new session starts UNCERTAIN.
+"Simulate" feeds one reading per simulated second through the same pipeline to
+reach READY without waiting in real time.
+
+Run from this folder:
+    python -m streamlit run app.py
 """
 
 from __future__ import annotations
 
 import sys
-from collections import Counter
 from datetime import datetime, timedelta
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
 
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "src"))
 
-import plot_style as ps  # noqa: E402
 from inference_pipeline import ProSafeInferencePipeline  # noqa: E402
 from predict import SafetyPredictor  # noqa: E402
+from preprocessing import DEFAULT_CONFIG, UNCERTAIN_REASON_TEXT, UncertainReason  # noqa: E402
+from streaming_preprocessor import StreamingPreprocessor  # noqa: E402
 from utils import (  # noqa: E402
+    DEVIATION_COLUMNS,
+    EXPOSURE_COLUMNS,
+    GAS_RATIO_COLUMNS,
+    NOISE_DOSE_COLUMNS,
     RAW_SENSOR_COLUMNS,
-    RISK_CLASSES,
-    SYNTHETIC_DATA_PATH,
-    W001_DATA_PATH,
-    W002_DATA_PATH,
-    _read_ml_ready,
-    load_frozen_config,
+    ROLLING_COLUMNS,
+    TREND_COLUMNS,
 )
 
-st.set_page_config(page_title="ProSafe ML V2", page_icon="⛑️", layout="wide")
-COLORS = {"SAFE": ps.STATUS["Safe"], "WARNING": ps.STATUS["Warning"], "CRITICAL": ps.STATUS["Critical"], "UNCERTAIN": "#898781"}
+st.set_page_config(page_title="ProSafe V2 Safety Predictor", page_icon="⛑️", layout="wide")
+
+STATUS_STYLE = {
+    "SAFE": ("#22c55e", "✅", "Safe"),
+    "WARNING": ("#f59e0b", "⚠️", "Warning"),
+    "CRITICAL": ("#ef4444", "🚨", "Critical"),
+    "UNCERTAIN": ("#8b969a", "❔", "Uncertain"),
+}
+SIM_DURATIONS = [1, 10, 30, 60, 180, 300]
+FEATURE_GROUPS = [
+    ("Raw (after validation / short hold)", RAW_SENSOR_COLUMNS),
+    ("Personalized deviations", DEVIATION_COLUMNS),
+    ("Gas ratio (vs. session gas baseline)", GAS_RATIO_COLUMNS),
+    ("Rolling statistics", ROLLING_COLUMNS),
+    ("Trends (per minute)", TREND_COLUMNS),
+    ("Exposure durations (s)", EXPOSURE_COLUMNS),
+    ("Noise dose (NIOSH, % of daily limit)", NOISE_DOSE_COLUMNS),
+]
+CH = DEFAULT_CONFIG.channels  # the V2 per-channel plausibility ranges
+
+# Median raw readings of real W_001 seconds per offline label (with W_001's
+# baselines). Through the real pipeline they settle on SAFE / WARNING / CRITICAL.
+PRESETS = {
+    "Typical Safe": dict(ambient_temperature=27.2, uv_index=2.49, gas=8.1, noise=64.7, body_temperature=36.83, heart_rate=87.0),
+    "Typical Warning": dict(ambient_temperature=30.7, uv_index=4.42, gas=8.3, noise=65.4, body_temperature=36.99, heart_rate=96.0),
+    "Typical Critical": dict(ambient_temperature=31.7, uv_index=7.68, gas=8.0, noise=66.8, body_temperature=37.07, heart_rate=105.0),
+}
+DEFAULT_BASELINES = dict(baseline_hr=83.0, baseline_body_temperature=36.69)
 
 
+# ---------------------------------------------------------------------------
+# State
+# ---------------------------------------------------------------------------
 @st.cache_resource
-def load_predictor(name: str) -> SafetyPredictor:
-    return SafetyPredictor.load_named(name)
+def load_predictor() -> SafetyPredictor:
+    """The production model only (models/best_model.pkl via SafetyPredictor.load)."""
+    return SafetyPredictor.load()
 
 
-@st.cache_data
-def load_rows() -> pd.DataFrame:
-    df = pd.concat([_read_ml_ready(p) for p in (SYNTHETIC_DATA_PATH, W001_DATA_PATH, W002_DATA_PATH)], ignore_index=True)
-    df["row_in_worker"] = df.groupby("worker_id").cumcount()
+def new_pipeline() -> ProSafeInferencePipeline:
+    # debug_features=True: UNCERTAIN results also expose the (provisional)
+    # features for display. They are never sent to the classifier.
+    return ProSafeInferencePipeline(load_predictor(), preprocessor=StreamingPreprocessor(debug_features=True))
+
+
+def init_state() -> None:
+    ss = st.session_state
+    if "pipeline" not in ss:
+        ss.pipeline = new_pipeline()
+        # Simulated helmet clock: +1 s per processed reading (timestamps must increase).
+        ss.clock = datetime.now().replace(microsecond=0)
+        ss.history = []          # compact per-second results for the period list
+        ss.last = None           # last full pipeline response
+        ss.last_baselines = None
+        ss.notice = None
+        for k, v in {**PRESETS["Typical Safe"], **DEFAULT_BASELINES}.items():
+            ss[k] = v
+        ss.worker_id = "DEMO-WORKER"
+        ss.helmet_id = "DEMO-HELMET"
+
+
+def apply_preset(name: str) -> None:
+    for k, v in PRESETS[name].items():
+        st.session_state[k] = v
+
+
+def process_seconds(n: int) -> None:
+    """Feed n consecutive 1 Hz readings (same values, sequential timestamps)."""
+    ss = st.session_state
+    worker = ss.worker_id.strip() or "DEMO-WORKER"
+    baselines = (float(ss.baseline_hr), float(ss.baseline_body_temperature))
+    if ss.last_baselines is not None and baselines != ss.last_baselines:
+        ss.notice = "Baseline changed: V2 restarted this worker's session (BASELINE_CHANGED), as in production."
+    ss.last_baselines = baselines
+    reading_values = {c: float(ss[c]) for c in RAW_SENSOR_COLUMNS}
+
+    progress = st.progress(0.0, text="Processing readings...") if n > 30 else None
+    for i in range(n):
+        # Same profile registration the V2 service does for every reading.
+        ss.pipeline.register_worker(worker, *baselines)
+        ss.clock += timedelta(seconds=1)
+        reading = {"worker_id": worker, "helmet_id": ss.helmet_id.strip() or None,
+                   "timestamp": ss.clock.isoformat(), **reading_values}
+        out = ss.pipeline.process_raw(reading, include_details=True)
+        ss.history.append({"time": ss.clock, "status": out["predicted_class"],
+                           "reason": out.get("uncertain_reason"), "session": out.get("session_id")})
+        ss.last = out
+        if progress and (i % 10 == 0 or i == n - 1):
+            progress.progress((i + 1) / n, text=f"Processed {i + 1}/{n} simulated seconds")
+    ss.history = ss.history[-3600:]
+    if progress:
+        progress.empty()
+
+
+def reset_session(cold: bool) -> None:
+    ss = st.session_state
+    worker = ss.worker_id.strip() or "DEMO-WORKER"
+    if cold:
+        ss.pipeline.preprocessor.reset_workday(worker)
+        ss.notice = "New workday: the next reading starts a cold session (180-s sensor warm-up, noise dose reset)."
+    else:
+        ss.pipeline.preprocessor.reset_session(worker)
+        ss.notice = "Session reset: windows, counters and gas baseline cleared (warm restart: 20 samples of history needed)."
+    ss.history = []
+    ss.last = None
+
+
+def periods(history: list[dict]) -> pd.DataFrame:
+    rows = []
+    for h in history:
+        key = (h["status"], h["reason"], h["session"])
+        if rows and rows[-1]["_key"] == key:
+            rows[-1]["To"] = h["time"]
+            rows[-1]["Seconds"] += 1
+        else:
+            rows.append({"_key": key, "Status": h["status"], "Reason": h["reason"] or "", "From": h["time"], "To": h["time"], "Seconds": 1})
+    df = pd.DataFrame(rows[::-1]).drop(columns="_key") if rows else pd.DataFrame()
+    for c in ("From", "To"):
+        if c in df:
+            df[c] = df[c].dt.strftime("%H:%M:%S")
     return df
 
 
-registry = SafetyPredictor.list_available_models()
-if not registry:
-    st.error("No production model found. Run `python src/promote_model.py` first.")
-    st.stop()
-cfg = load_frozen_config()
-best = next(n for n, e in registry.items() if e.get("is_best"))
+def signed(v, nd: int, unit: str) -> str:
+    return "—" if v is None else f"{v:+.{nd}f}{unit}"
+
+
+# ---------------------------------------------------------------------------
+# Sidebar: model information (read-only), worker, session, presets
+# ---------------------------------------------------------------------------
+init_state()
+predictor = load_predictor()
+ss = st.session_state
 
 with st.sidebar:
-    st.title("⛑️ ProSafe ML V2")
-    st.caption("Preprocessing + quality gate + 3-class safety classifier")
-    name = st.selectbox("Model", list(registry), index=list(registry).index(best))
-    if name == best:
-        st.caption(f"⭐ production model {cfg.get('model_version', '')} ({cfg['feature_set']}, {len(cfg['feature_columns'])} features)")
-    m = registry[name]["metrics"]
-    st.metric("W_002 test macro F1", f"{m['macro_f1']:.3f}")
-    st.metric("W_002 test Critical recall", f"{m['critical_recall']:.3f}")
-    st.caption("Known limitation: most W_002 Critical seconds are predicted Warning (UV-driven Critical is rare in training).")
-    st.caption("UNCERTAIN is a data-quality outcome of the preprocessing gate - never a classifier class.")
+    st.title("⛑️ ProSafe V2")
+    st.caption("Streaming preprocessing + data-quality gate + safety classifier")
 
-predictor = load_predictor(name)
-rows = load_rows()
-tab1, tab2 = st.tabs(["Model-ready prediction", "Raw-stream replay"])
+    st.subheader("Model")
+    st.markdown(f"**{predictor.model_name}** · {predictor.feature_set} · {len(predictor.feature_columns)} features")
+    with st.expander("Model information"):
+        meta = predictor.meta
+        st.markdown(
+            f"- Version: `{meta.get('model_version', '?')}`\n"
+            f"- Trained on: synthetic S_001–S_004 + real W_001\n"
+            f"- External test: W_002 (accuracy {meta.get('test_accuracy', float('nan')):.4f}, "
+            f"Critical recall {meta.get('test_critical_recall', float('nan')):.4f})\n"
+            f"- Scaling: {'yes' if predictor.use_scaled else 'none'}\n"
+            "- Baselines are worker context for deviations, **never model features**.\n"
+            "- Known limitation: most W_002 Critical seconds were predicted Warning."
+        )
 
-with tab1:
-    c1, c2 = st.columns(2)
-    worker = c1.selectbox("Worker", sorted(rows["worker_id"].unique()))
-    wrows = rows[rows["worker_id"] == worker]
-    idx = c2.slider("Row", 0, len(wrows) - 1, min(600, len(wrows) - 1))
-    row = wrows.iloc[idx]
-    feats = {c: (None if pd.isna(row[c]) else float(row[c])) for c in predictor.feature_columns}
-    pipe = ProSafeInferencePipeline(predictor)
-    out = pipe.predict_model_ready(feats)
-    label = out["predicted_class"]
-    st.markdown(f"### Prediction: **{label}**   ·   offline label: **{row['risk_level'].upper()}**")
-    if out["probabilities"]:
-        st.bar_chart(pd.Series(out["probabilities"]).reindex([c.upper() for c in RISK_CLASSES]))
-    if label == "UNCERTAIN":
-        st.info(f"Not model-ready: {out['uncertain_reason']} - {out.get('missing_features')}")
-    with st.expander("Feature vector sent to the classifier"):
-        st.dataframe(pd.Series(feats, name="value").to_frame(), width="stretch")
+    st.subheader("Worker")
+    st.text_input("Worker ID", key="worker_id")
+    st.text_input("Helmet ID", key="helmet_id")
 
-with tab2:
-    st.write("Raw sensor columns of a worker are replayed at 1 Hz from a fresh session through the streaming "
-             "preprocessor. The baselines are the worker's stored profile values. The first 180 s of a "
-             "workday are SENSOR_WARMUP, as in the offline framework.")
-    c1, c2, c3 = st.columns(3)
-    worker2 = c1.selectbox("Worker ", sorted(rows["worker_id"].unique()), key="w2")
-    w = rows[rows["worker_id"] == worker2].reset_index(drop=True)
-    start = c2.number_input("Start row", 0, max(0, len(w) - 60), 0, step=60)
-    n = c3.slider("Seconds to replay", 60, 1800, 600, step=60)
-    seg = w.iloc[int(start):int(start) + n]
-    hr_bl = float((w["heart_rate"] - w["hr_deviation_bpm"]).median())
-    bt_bl = float((w["body_temperature"] - w["body_temp_deviation_c"]).median())
-    pipe2 = ProSafeInferencePipeline(predictor)
-    pipe2.register_worker(worker2, hr_bl, bt_bl)
-    t0 = datetime(2026, 7, 21, 9, 0, 0)
-    outs = []
-    for i, (_, r) in enumerate(seg.iterrows()):
-        reading = {"worker_id": worker2, "timestamp": (t0 + timedelta(seconds=i)).isoformat(),
-                   **{c: (None if pd.isna(r[c]) else float(r[c])) for c in RAW_SENSOR_COLUMNS}}
-        o = pipe2.process_raw(reading)
-        outs.append({"second": i, "system": o["predicted_class"], "offline_label": r["risk_level"].upper(),
-                     "reason": o.get("uncertain_reason")})
-    res = pd.DataFrame(outs)
-    a, b, c = st.columns(3)
-    a.metric("Classifier calls", pipe2.model_calls)
-    b.metric("UNCERTAIN seconds", int((res.system == "UNCERTAIN").sum()))
-    ready = res[res.system != "UNCERTAIN"]
-    c.metric("Agreement with offline label (READY s)", f"{(ready.system == ready.offline_label).mean():.1%}" if len(ready) else "-")
-    ps.apply()
-    fig, ax = plt.subplots(figsize=(12, 2.6))
-    order = ["UNCERTAIN", "SAFE", "WARNING", "CRITICAL"]
-    for k in order:
-        s = res[res.system == k]
-        ax.scatter(s.second, [order.index(k)] * len(s), s=6, marker="|", color=COLORS[k], label=k)
-    ax.set_yticks(range(4))
-    ax.set_yticklabels(order)
-    ax.set_xlabel("seconds since session start")
-    ax.grid(axis="y", visible=False)
-    st.pyplot(fig)
-    st.write("UNCERTAIN reasons:", dict(Counter(res.reason.dropna())))
+    st.subheader("Session")
+    st.button("Reset Session", on_click=reset_session, args=(False,), width="stretch",
+              help="End only this worker's current V2 session (windows, counters, gas baseline).")
+    st.button("Start new workday (cold start)", on_click=reset_session, args=(True,), width="stretch",
+              help="Also resets the workday noise dose; the next session needs the 180-s sensor warm-up.")
+
+    st.subheader("Quick inputs")
+    st.caption("Median readings of real W_001 seconds per label.")
+    for name in PRESETS:
+        st.button(name, on_click=apply_preset, args=(name,), width="stretch")
+
+
+# ---------------------------------------------------------------------------
+# Main: inputs
+# ---------------------------------------------------------------------------
+st.title("ProSafe V2 Safety Predictor")
+st.markdown(
+    "Enter the worker's baselines and the helmet readings. Every processed second runs through the "
+    "**real V2 pipeline** (streaming preprocessing → 38 EXTENDED features → UNCERTAIN gate → XGBoost)."
+)
+
+c_base, c_env, c_phys = st.columns([1, 1.2, 1.2])
+with c_base:
+    st.subheader("Worker Baseline")
+    st.number_input("Baseline Heart Rate (BPM)", min_value=CH["heart_rate"].min_value, max_value=CH["heart_rate"].max_value,
+                    step=1.0, key="baseline_hr", help="Resting heart rate. Context for deviations only.")
+    st.number_input("Baseline Body Temperature (°C)", min_value=CH["body_temperature"].min_value,
+                    max_value=CH["body_temperature"].max_value, step=0.01, format="%.2f", key="baseline_body_temperature")
+with c_env:
+    st.subheader("Environmental Sensors")
+    st.slider("Ambient Temperature (°C)", CH["ambient_temperature"].min_value, CH["ambient_temperature"].max_value, step=0.1, key="ambient_temperature")
+    st.slider("UV Index", CH["uv_index"].min_value, CH["uv_index"].max_value, step=0.01, key="uv_index")
+    st.number_input("Gas sensor value (sensor units, not ppm)", min_value=CH["gas"].min_value, max_value=CH["gas"].max_value,
+                    step=0.1, key="gas", help="Uncalibrated MQ-2 sensor units as in the V2 data. V2 also compares it with the session gas baseline.")
+    st.slider("Noise (dB)", CH["noise"].min_value, CH["noise"].max_value, step=0.1, key="noise")
+with c_phys:
+    st.subheader("Physiological Sensors")
+    st.slider("Body Temperature (°C)", CH["body_temperature"].min_value, CH["body_temperature"].max_value, step=0.01, key="body_temperature")
+    st.slider("Heart Rate (BPM)", CH["heart_rate"].min_value, CH["heart_rate"].max_value, step=1.0, key="heart_rate")
+
+a1, a2, a3 = st.columns([1, 1, 1])
+with a1:
+    process_one = st.button("Process 1 Second", type="primary", width="stretch")
+with a2:
+    duration = st.select_slider("Simulation duration (s)", options=SIM_DURATIONS, value=60)
+with a3:
+    simulate = st.button(f"Simulate {duration} s", width="stretch")
+st.caption("**Simulation / demo acceleration:** the same values are fed once per simulated second, with sequential "
+           "timestamps, through the same preprocessing call: no step is skipped and no history is invented.")
+
+if process_one:
+    process_seconds(1)
+if simulate:
+    process_seconds(int(duration))
+if ss.notice:
+    st.info(ss.notice)
+    ss.notice = None
+
+# ---------------------------------------------------------------------------
+# Result
+# ---------------------------------------------------------------------------
+st.divider()
+out = ss.last
+st.subheader("Current V2 Status")
+if out is None:
+    st.write("No reading processed yet in this session. Click **Process 1 Second** or **Simulate**.")
+else:
+    status = out["predicted_class"]
+    color, icon, word = STATUS_STYLE.get(status, STATUS_STYLE["UNCERTAIN"])
+    ready = bool(out.get("model_ready"))
+    reason = out.get("uncertain_reason")
+    subtitle = "Model prediction (READY)" if ready else UNCERTAIN_REASON_TEXT.get(UncertainReason(reason), reason) if reason in UncertainReason._value2member_map_ else (reason or "")
+    st.markdown(
+        f"""<div style="background:{color};color:white;padding:22px;border-radius:12px;text-align:center;margin:8px 0 16px">
+        <div style="font-size:44px;line-height:1">{icon}</div>
+        <div style="font-size:40px;font-weight:800;letter-spacing:2px">{status}</div>
+        <div style="font-size:16px;opacity:.95;margin-top:6px">{subtitle}</div></div>""",
+        unsafe_allow_html=True,
+    )
+
+    diag = out.get("diagnostics") or {}
+    m1, m2, m3, m4 = st.columns(4)
+    probs = out.get("probabilities") or {}
+    m1.metric("Confidence", f"{probs[status] * 100:.1f}%" if ready and status in probs else "—")
+    m2.metric("Data quality", out.get("data_quality", "—"))
+    m3.metric("Model ready", "Yes" if ready else "No")
+    m4.metric("Samples in session", diag.get("sample_count", "—"))
+    st.caption(f"Model: {out.get('model_name')} · Feature set: {out.get('feature_set')} · "
+               f"Simulated time: {ss.clock.strftime('%H:%M:%S')} · Session elapsed: {out.get('session_elapsed_s') or 0:.0f} s")
+
+    if not ready:
+        reasons = out.get("uncertain_reasons") or [reason]
+        st.markdown("**Why UNCERTAIN** (no probabilities: the classifier was not called)")
+        for r in reasons:
+            text = UNCERTAIN_REASON_TEXT.get(UncertainReason(r)) if r in UncertainReason._value2member_map_ else ""
+            st.markdown(f"- `{r}` — {text}")
+    else:
+        st.markdown("**Class probabilities**")
+        for cls in ("SAFE", "WARNING", "CRITICAL"):
+            pct = probs.get(cls, 0.0) * 100
+            st.markdown(
+                f"""<div style="margin:6px 0"><div style="display:flex;justify-content:space-between">
+                <b>{STATUS_STYLE[cls][2]}</b><b>{pct:.1f}%</b></div>
+                <div style="background:rgba(128,128,128,.25);border-radius:6px;height:16px;overflow:hidden">
+                <div style="width:{pct}%;background:{STATUS_STYLE[cls][0]};height:100%"></div></div></div>""",
+                unsafe_allow_html=True,
+            )
+
+    feats = out.get("v2_features") or {}
+    st.markdown("**Personalized values** (computed by the V2 preprocessor)" + ("" if ready else " — provisional, not used for prediction"))
+    p1, p2, p3, p4 = st.columns(4)
+    p1.metric("HR deviation", signed(feats.get("hr_deviation_bpm"), 1, " bpm"))
+    p2.metric("HR deviation %", signed(feats.get("hr_deviation_pct"), 1, "%"))
+    p3.metric("Body temp deviation", signed(feats.get("body_temp_deviation_c"), 2, " °C"))
+    p4.metric("Body temp deviation %", signed(feats.get("body_temp_deviation_pct"), 2, "%"))
+
+    with st.expander("Session details"):
+        gas_bl = diag.get("gas_baseline")
+        st.markdown(
+            f"- Session: `{out.get('session_id')}` ({'cold start' if diag.get('cold_start') else 'warm start'})\n"
+            f"- Samples processed in session: {diag.get('sample_count', '—')} · elapsed {out.get('session_elapsed_s') or 0:.0f} s\n"
+            f"- Gas baseline: {'not established yet' if gas_bl is None else f'{gas_bl:.2f}'}"
+            f"{' (provisional, calibration window still open)' if gas_bl is not None and diag.get('gas_baseline_provisional') else ''}\n"
+            f"- Channel status: {diag.get('channel_status', {})}"
+        )
+        if out.get("notes"):
+            st.markdown("- Notes: " + "; ".join(out["notes"]))
+
+    with st.expander("V2 Generated Features"):
+        if not feats:
+            st.write("No features for this result.")
+        else:
+            st.caption(f"{len(predictor.feature_columns)} EXTENDED features produced by StreamingPreprocessor. "
+                       + ("These were sent to the classifier." if ready else
+                          "UNCERTAIN: shown for inspection only, NOT sent to the classifier. Empty = not available yet."))
+            for title, cols in FEATURE_GROUPS:
+                st.markdown(f"**{title}**")
+                st.dataframe(pd.DataFrame({"feature": cols, "value": [feats.get(c) for c in cols]}),
+                             hide_index=True, width="stretch")
+
+    with st.expander("Status periods in this session"):
+        df = periods(ss.history)
+        if df.empty:
+            st.write("—")
+        else:
+            st.dataframe(df, hide_index=True, width="stretch")
+
+st.caption("Research project: Personalized AI-Driven Wearable Safety Monitoring System for Construction Workers.")

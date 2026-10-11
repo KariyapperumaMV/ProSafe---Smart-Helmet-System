@@ -9,6 +9,7 @@ import {
   markNotificationRead,
   streamNotifications,
 } from "../api/notificationApi";
+import { subscribeLive } from "../live/liveUpdates";
 
 vi.mock("../context/AuthContext", () => ({ useAuth: vi.fn() }));
 vi.mock("../context/ToastContext", () => ({ useToast: vi.fn() }));
@@ -23,9 +24,9 @@ let streamCalls;
 let showToast;
 
 function mockStreamOnce() {
-  streamNotifications.mockImplementation(({ onEvent, signal }) => {
+  streamNotifications.mockImplementation(({ onEvent, onOpen, signal }) => {
     return new Promise((resolve, reject) => {
-      streamCalls.push({ onEvent, resolve, reject });
+      streamCalls.push({ onEvent, onOpen, resolve, reject });
       signal.addEventListener("abort", () => {
         const err = new Error("aborted");
         err.name = "AbortError";
@@ -297,5 +298,45 @@ describe("useNotifications", () => {
     expect(markAllNotificationsRead).toHaveBeenCalled();
     expect(result.current.unreadCount).toBe(0);
     expect(result.current.notifications.every((n) => n.read)).toBe(true);
+  });
+
+  test("live WORKER_UPDATE events go to the live-update bus, never into the bell/inbox", async () => {
+    const received = [];
+    const unsubscribe = subscribeLive((e) => received.push(e));
+    const { result } = renderHook(() => useNotifications());
+    await waitFor(() => expect(streamCalls).toHaveLength(1));
+
+    act(() => {
+      streamCalls[0].onEvent({ kind: "WORKER_UPDATE", workerId: "W-001", status: { operationalState: "WARNING" }, points: [] });
+    });
+
+    expect(received).toEqual([expect.objectContaining({ kind: "WORKER_UPDATE", workerId: "W-001" })]);
+    expect(result.current.notifications).toEqual([]);
+    expect(result.current.unreadCount).toBe(0);
+    expect(result.current.lastEvent).toBeNull();
+    expect(showToast).not.toHaveBeenCalled();
+    unsubscribe();
+  });
+
+  test("announces the first connection and every REconnect so live views can refetch", async () => {
+    vi.useFakeTimers();
+    const received = [];
+    const unsubscribe = subscribeLive((e) => received.push(e));
+    renderHook(() => useNotifications());
+    await vi.waitFor(() => expect(streamCalls).toHaveLength(1));
+
+    act(() => streamCalls[0].onOpen());
+    expect(received).toEqual([{ kind: "STREAM_CONNECTED", reconnected: false }]);
+
+    await act(async () => {
+      streamCalls[0].reject(new Error("network blip"));
+      await Promise.resolve();
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    expect(streamCalls).toHaveLength(2);
+    act(() => streamCalls[1].onOpen());
+    expect(received[1]).toEqual({ kind: "STREAM_CONNECTED", reconnected: true });
+    unsubscribe();
   });
 });

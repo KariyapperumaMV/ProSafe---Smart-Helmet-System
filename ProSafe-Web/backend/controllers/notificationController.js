@@ -55,7 +55,9 @@ exports.stream = (req, res) => {
   res.write(": connected\n\n");
 
   const userId = req.user.id;
-  notificationStream.subscribe(userId, res);
+  // The role scopes live worker updates: ADMIN streams receive every
+  // worker's updates, a WORKER stream only their own.
+  notificationStream.subscribe(userId, res, req.user.role);
 
   // Keeps the connection alive through idle-timeout proxies/load balancers
   // and lets a dead connection surface via a failed write.

@@ -5,6 +5,8 @@ import { LoadingState } from "../components/ui/LoadingState";
 import { EmptyState } from "../components/ui/EmptyState";
 import { UserDetailView } from "../components/users/UserDetailView";
 import { getMe } from "../api/userApi";
+import { useLiveWorkerUpdates } from "../hooks/useLiveWorkerUpdates";
+import { applyLiveUpdateToUserDetail } from "../utils/liveMerge";
 
 // Worker self-view — read only (#3: workers can only check their own
 // details; edit/delete stay admin-only actions).
@@ -19,6 +21,11 @@ export function ProfilePage() {
       .catch((err) => setError(err))
       .finally(() => setLoading(false));
   }, []);
+
+  // A worker's own live updates (the backend only sends them their own).
+  useLiveWorkerUpdates(data?.user?.role === "WORKER" ? data.user.userId : null, (event) => setData((prev) => applyLiveUpdateToUserDetail(prev, event)), {
+    onReconnect: () => getMe().then(setData).catch(() => {}),
+  });
 
   return (
     <div>

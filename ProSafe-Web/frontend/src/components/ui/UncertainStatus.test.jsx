@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { OperationalStatus, RiskBadge } from "./StatusBadge";
 import { WorkerSafetyCard } from "../dashboard/WorkerSafetyCard";
 import { WorkerStatusSummary } from "../dashboard/WorkerStatusSummary";
-import { PredictionTimelineChart } from "../users/sensors/PredictionTimelineChart";
+import { SafetyHistoryList } from "../users/sensors/SafetyHistoryList";
 
 // UNCERTAIN = no trustworthy risk decision. It must render as its own grey
 // state with a reason — never as Safe, and never as plain "Unknown".
@@ -40,16 +40,18 @@ describe("UNCERTAIN status display", () => {
     expect(screen.getByText("2")).toBeInTheDocument();
   });
 
-  test("the prediction timeline draws UNCERTAIN segments with their own style", () => {
+  test("the status-period list shows UNCERTAIN periods with their own style and reason", () => {
     const { container } = render(
-      <PredictionTimelineChart
+      <SafetyHistoryList
         segments={[
-          { state: "UNCERTAIN", from: "2026-10-09T03:30:00.000Z", to: "2026-10-09T03:33:00.000Z", pointCount: 180, avgConfidence: null },
+          { state: "UNCERTAIN", from: "2026-10-09T03:30:00.000Z", to: "2026-10-09T03:33:00.000Z", pointCount: 180, avgConfidence: null, uncertainReason: "SENSOR_WARMUP" },
           { state: "SAFE", from: "2026-10-09T03:33:00.000Z", to: "2026-10-09T04:00:00.000Z", pointCount: 1620, avgConfidence: 0.93 },
         ]}
       />
     );
     expect(screen.getByText("UNCERTAIN")).toBeInTheDocument();
-    expect(container.querySelector(".ps-timeline-segment.ps-timeline-uncertain")).not.toBeNull();
+    expect(container.querySelector(".ps-timeline-dot.ps-timeline-uncertain")).not.toBeNull();
+    expect(screen.getByText("Sensor warm-up")).toBeInTheDocument();
+    expect(screen.getByText("93% confidence")).toBeInTheDocument();
   });
 });

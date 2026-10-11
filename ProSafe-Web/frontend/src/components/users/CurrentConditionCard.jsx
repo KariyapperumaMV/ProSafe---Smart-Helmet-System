@@ -5,8 +5,12 @@ import { LoadingState } from "../ui/LoadingState";
 import { EmptyState } from "../ui/EmptyState";
 import { getSafetyGuidance } from "../../api/userSensorApi";
 import { formatRelativeTime } from "../../utils/formatRelativeTime";
+import { useLiveWorkerUpdates, useThrottledCallback } from "../../hooks/useLiveWorkerUpdates";
 
+// Fallback poll; live worker updates trigger a (throttled) reload as soon as
+// new data is processed, so the card follows the helmet without a refresh.
 const POLL_MS = 60 * 1000;
+const LIVE_RELOAD_MIN_MS = 5 * 1000;
 
 const BADGE_TONE = {
   EMERGENCY: "danger",
@@ -38,6 +42,9 @@ export function CurrentConditionCard({ userId }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const mountedRef = useRef(true);
+  const loadRef = useRef(null);
+  const reloadThrottled = useThrottledCallback(() => loadRef.current?.(), LIVE_RELOAD_MIN_MS);
+  useLiveWorkerUpdates(userId, reloadThrottled, { onReconnect: () => loadRef.current?.() });
 
   useEffect(() => {
     mountedRef.current = true;
@@ -58,6 +65,7 @@ export function CurrentConditionCard({ userId }) {
         });
     }
 
+    loadRef.current = load;
     load();
     const interval = setInterval(load, POLL_MS);
     return () => {

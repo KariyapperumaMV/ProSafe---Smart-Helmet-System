@@ -96,11 +96,23 @@ class ProSafeInferencePipeline:
                         gas_baseline: Optional[float] = None) -> None:
         self.preprocessor.register_worker(WorkerProfile(worker_id, baseline_hr, baseline_body_temperature, gas_baseline))
 
-    def process_raw(self, reading: Union[dict, RawReading]) -> dict:
-        """One raw helmet reading -> system output (also returns the preprocessing status)."""
+    def process_raw(self, reading: Union[dict, RawReading], include_details: bool = False) -> dict:
+        """One raw helmet reading -> system output (also returns the preprocessing status).
+
+        include_details=True (demo/debugging, e.g. app.py) adds the preprocessor's own
+        `v2_features` and `diagnostics` to the response. For an UNCERTAIN result the
+        features are only present when the preprocessor was built with
+        debug_features=True; they are informational and never reach the classifier.
+        """
         pre: PreprocessResult = self.preprocessor.process(reading)
         context = {"worker_id": pre.worker_id, "timestamp": pre.timestamp, "session_id": pre.session_id,
                    "session_elapsed_s": pre.session_elapsed_s}
+        if include_details:
+            context["v2_features"] = ({k: _json_number(v) for k, v in pre.features.items()}
+                                   if pre.features is not None else None)
+            context["diagnostics"] = {k: (_json_number(v) if isinstance(v, float) else v)
+                                      for k, v in (pre.diagnostics or {}).items()}
+            context["notes"] = list(pre.notes)
         if not pre.model_ready:
             return uncertain_response(pre.reason, pre.reasons, **self.model_identity, **context)
         derived = {k: _json_number(pre.features.get(k)) for k in DERIVED_AUDIT_FEATURES}

@@ -5,16 +5,16 @@ import { handleAnchorClick } from '../../lib/navigation.js';
 import { useActiveSection, useScrolled } from '../../hooks/useActiveSection.js';
 
 const topLevelIds = navItems.map((item) => item.id);
-const domainItem = navItems.find((item) => item.children);
-const domainIds = domainItem.children.map((child) => child.id);
+const childIds = navItems.flatMap((item) => (item.children ?? []).map((c) => c.id));
 
-function DomainDropdown({ item, active, activeChild }) {
+function NavDropdown({ item, active, activeChild }) {
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef(null);
   const buttonRef = useRef(null);
   const linkRefs = useRef([]);
   const focusFirstOnOpen = useRef(false);
-  const menuId = 'domain-menu';
+  const menuId = `${item.id}-menu`;
+  const links = [{ id: item.id, label: `${item.label} overview` }, ...item.children];
 
   useEffect(() => {
     if (!open) return undefined;
@@ -30,31 +30,26 @@ function DomainDropdown({ item, active, activeChild }) {
     return () => document.removeEventListener('pointerdown', onPointer);
   }, [open]);
 
-  const close = (returnFocus = false) => {
-    setOpen(false);
-    if (returnFocus) buttonRef.current?.focus();
-  };
-
   const onButtonKeyDown = (e) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      if (open) {
-        linkRefs.current[0]?.focus();
-      } else {
+      if (open) linkRefs.current[0]?.focus();
+      else {
         focusFirstOnOpen.current = true;
         setOpen(true);
       }
     } else if (e.key === 'Escape') {
-      close(true);
+      setOpen(false);
     }
   };
 
   const onMenuKeyDown = (e) => {
     const index = linkRefs.current.indexOf(document.activeElement);
-    const total = item.children.length + 1;
+    const total = links.length;
     if (e.key === 'Escape') {
       e.preventDefault();
-      close(true);
+      setOpen(false);
+      buttonRef.current?.focus();
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
       linkRefs.current[(index + 1) % total]?.focus();
@@ -63,8 +58,6 @@ function DomainDropdown({ item, active, activeChild }) {
       linkRefs.current[(index - 1 + total) % total]?.focus();
     }
   };
-
-  const links = [{ id: item.id, label: 'Domain overview' }, ...item.children];
 
   return (
     <div
@@ -83,22 +76,18 @@ function DomainDropdown({ item, active, activeChild }) {
         aria-controls={menuId}
         onClick={() => setOpen((v) => !v)}
         onKeyDown={onButtonKeyDown}
-        className={`flex items-center gap-1 rounded-sm px-3 py-2 text-[0.9rem] font-semibold transition-colors ${
+        className={`relative flex items-center gap-1 rounded-sm px-3 py-2 text-[0.9rem] font-semibold transition-colors ${
           active ? 'text-brand' : 'text-muted hover:text-ink'
         }`}
       >
         {item.label}
         <ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
+        {active && <span className="absolute inset-x-3 -bottom-0.5 h-0.5 rounded-full bg-brand" aria-hidden="true" />}
       </button>
-      <div
-        id={menuId}
-        hidden={!open}
-        onKeyDown={onMenuKeyDown}
-        className="absolute left-1/2 top-full z-50 w-64 -translate-x-1/2 pt-2"
-      >
+      <div id={menuId} hidden={!open} onKeyDown={onMenuKeyDown} className="absolute left-1/2 top-full z-50 w-60 -translate-x-1/2 pt-2">
         <ul className="card overflow-hidden p-1.5 shadow-card">
           {links.map((link, index) => {
-            const isActive = link.id === activeChild || (index === 0 && active && !activeChild);
+            const isActive = link.id === activeChild;
             return (
               <li key={link.id}>
                 <a
@@ -123,7 +112,7 @@ function DomainDropdown({ item, active, activeChild }) {
 
 export function Header() {
   const active = useActiveSection(topLevelIds);
-  const activeChild = useActiveSection(domainIds);
+  const activeChild = useActiveSection(childIds);
   const scrolled = useScrolled();
   const [mobileOpen, setMobileOpen] = useState(false);
   const toggleRef = useRef(null);
@@ -151,7 +140,6 @@ export function Header() {
     };
   }, [mobileOpen]);
 
-  const domainActive = active === 'domain';
   // Release the scroll lock synchronously so the following scroll is not cancelled.
   const closeMobile = () => {
     document.body.style.overflow = '';
@@ -176,13 +164,11 @@ export function Header() {
 
         <nav aria-label="Main" className="hidden lg:block">
           <ul className="flex items-center gap-0.5">
-            {navItems.map((item) =>
-              item.children ? (
-                <li key={item.id}>
-                  <DomainDropdown item={item} active={domainActive} activeChild={domainActive ? activeChild : null} />
-                </li>
-              ) : (
-                <li key={item.id}>
+            {navItems.map((item) => (
+              <li key={item.id}>
+                {item.children ? (
+                  <NavDropdown item={item} active={active === item.id} activeChild={active === item.id ? activeChild : null} />
+                ) : (
                   <a
                     href={`#${item.id}`}
                     aria-current={active === item.id ? 'location' : undefined}
@@ -192,13 +178,11 @@ export function Header() {
                     }`}
                   >
                     {item.label}
-                    {active === item.id && (
-                      <span className="absolute inset-x-3 -bottom-0.5 h-0.5 rounded-full bg-brand" aria-hidden="true" />
-                    )}
+                    {active === item.id && <span className="absolute inset-x-3 -bottom-0.5 h-0.5 rounded-full bg-brand" aria-hidden="true" />}
                   </a>
-                </li>
-              ),
-            )}
+                )}
+              </li>
+            ))}
           </ul>
         </nav>
 
@@ -236,13 +220,13 @@ export function Header() {
                   {item.label}
                 </a>
                 {item.children && (
-                  <ul className="mb-2 ml-3 border-l border-line/15 pl-3">
+                  <ul className="mb-2 ml-3 grid grid-cols-2 gap-x-2 border-l border-line/15 pl-3">
                     {item.children.map((child) => (
                       <li key={child.id}>
                         <a
                           href={`#${child.id}`}
                           onClick={(e) => handleAnchorClick(e, child.id, closeMobile)}
-                          className="block rounded-sm px-3 py-2 text-[0.92rem] text-muted hover:bg-white/5 hover:text-ink"
+                          className="block rounded-sm px-3 py-2 text-[0.9rem] text-muted hover:bg-white/5 hover:text-ink"
                         >
                           {child.label}
                         </a>

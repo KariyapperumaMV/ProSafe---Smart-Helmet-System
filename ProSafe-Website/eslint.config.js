@@ -25,6 +25,11 @@ export default [
     },
   },
   {
+    // React Three Fiber scene graphs use three.js props (args, position, ...).
+    files: ['src/components/helmet/**/*.jsx'],
+    rules: { 'react/no-unknown-property': 'off' },
+  },
+  {
     files: ['**/*.test.{js,jsx}', 'src/test/**'],
     languageOptions: { globals: { ...globals.browser, ...globals.node, ...globals.vitest } },
   },

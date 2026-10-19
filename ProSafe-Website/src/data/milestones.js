@@ -6,7 +6,8 @@
  *  - Progress Presentation 1: 12/05/2026 in the slide footer.
  *  - Progress Presentation 2: 01/09/2026 in the slide footer.
  *  - Dissertation: cover page of the draft is dated October 2026.
- * Marks were not available in any supplied material. Set `marks` (e.g. '6%')
+ * Marks: only the Final Report contribution (19%) is verified, from the
+ * IT4010 Final Report mark sheet. Set `marks` (e.g. '6%')
  * and `date` when they are confirmed; null renders as "To be confirmed".
  *
  * status: 'completed' | 'in-progress' | 'upcoming'
@@ -69,10 +70,11 @@ export const milestones = [
     shortTitle: 'Thesis',
     date: null,
     dateNote: 'Draft dated October 2026; submission date to be confirmed',
-    marks: null,
+    marks: '19%',
+    marksNote: 'Total contribution stated on the IT4010 Final Report mark sheet',
     status: 'in-progress',
     description:
-      'Final thesis presenting the literature, methodology, implementation, evaluation, results and conclusions of the research. Chapters 1 and 2 are drafted; results and conclusions are in preparation.',
+      'Final thesis presenting the literature, methodology, implementation, evaluation, results and conclusions of the research.',
     deliverables: ['Final dissertation'],
     links: ['thesis'],
   },

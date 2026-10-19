@@ -29,6 +29,8 @@ export default {
         info: token('info'),
         chart: token('chart-highlight'),
         'chart-neutral': token('chart-neutral'),
+        'series-a': token('series-a'),
+        'series-b': token('series-b'),
       },
       fontFamily: {
         sans: ['"Segoe UI"', '"Inter Variable"', 'Inter', 'system-ui', 'Avenir', 'Helvetica', 'Arial', 'sans-serif'],

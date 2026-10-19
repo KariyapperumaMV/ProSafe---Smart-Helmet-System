@@ -2,7 +2,11 @@ import '@testing-library/jest-dom/vitest';
 import { afterEach } from 'vitest';
 import { cleanup } from '@testing-library/react';
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  // Components read the URL hash on mount, so reset it between tests.
+  window.history.replaceState(null, '', '/');
+});
 
 // jsdom does not implement these browser APIs.
 if (!window.matchMedia) {

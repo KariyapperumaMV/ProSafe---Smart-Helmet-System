@@ -96,6 +96,15 @@ Critical->Safe. Each selection is scored once on the test worker. Results are in
 are in `models/experiments/`. The decision to deploy the Experiment-2 XGBoost was made after all W_002 results were
 known, so W_002 is no longer an unbiased estimate for it. A new unseen real worker is needed for that.
 
+## New-worker evaluation on W_003
+
+`python src/run_experiment_v2.py` re-runs the same three training strategies with the identical search, folds and
+selection rule (imported from `run_experiments.py`), freezes each selected model, and scores it once on the new real
+worker `data/prosafe_W003_ml_ready.csv`. W_003 is evaluation only: it never enters training, tuning, early stopping or
+selection. Results are in `outputs/experiment_v2/W003_EXPERIMENT_RESULTS.md`; models in `models/experiment_v2/`. The
+production model and the original experiment outputs are not changed. `--check` runs the validations only;
+`--audit PATH` adds the W_003 audit file to the post-hoc failure analysis.
+
 ## Layout
 
 ```
@@ -109,6 +118,7 @@ src/
   promote_model.py            verify + promote the selected experiment artifact (no training)
   modeling.py                 fold-safe fitting, metrics, ranking rule
   run_experiments.py          the training/evaluation command (fair optimization of all four algorithms)
+  run_experiment_v2.py        the same three strategies evaluated on the new unseen worker W_003
   plot_style.py               chart style
 tests/
   test_production_integration.py  promoted artifact parity, feature contract, baseline lifecycle, raw replay, HTTP contract

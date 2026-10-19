@@ -3,31 +3,34 @@ import { Header } from './components/layout/Header.jsx';
 import { Footer } from './components/layout/Footer.jsx';
 import { BackToTop } from './components/layout/BackToTop.jsx';
 import { HomeSection } from './sections/Home/HomeSection.jsx';
-import { DomainSection } from './sections/Domain/DomainSection.jsx';
-import { MilestonesSection } from './sections/Milestones/MilestonesSection.jsx';
-import { DocumentsSection } from './sections/Documents/DocumentsSection.jsx';
-import { PresentationsSection } from './sections/Presentations/PresentationsSection.jsx';
-import { AboutSection } from './sections/About/AboutSection.jsx';
-import { ContactSection } from './sections/Contact/ContactSection.jsx';
+import { ProSafeSection } from './sections/ProSafe/ProSafeSection.jsx';
+import { MethodologySection } from './sections/Methodology/MethodologySection.jsx';
+import { ResultsSection } from './sections/Results/ResultsSection.jsx';
+import { ResourcesSection } from './sections/Resources/ResourcesSection.jsx';
+import { AboutContactSection } from './sections/About/AboutContactSection.jsx';
+import { scrollToSection } from './lib/navigation.js';
 
 /**
- * Elements rendered by React do not exist when the browser first tries to
- * jump to the URL hash, so honour direct links such as /#documents once the
- * page has rendered.
+ * React renders the page after the browser first tries to jump to the URL
+ * hash, so honour direct links (including Resources tabs and anchors from the
+ * previous version of the site) once the page has rendered, and on later
+ * hash changes.
  */
-function useInitialHashScroll() {
+function useHashNavigation() {
   useEffect(() => {
-    const id = decodeURIComponent(window.location.hash.slice(1));
-    if (!id) return;
-    const target =
-      document.getElementById(id) ?? (id.startsWith('methodology-') ? document.getElementById('methodology-tabs') : null);
-    // Jump straight to the target on first load rather than animating from the top.
-    if (target) target.scrollIntoView({ block: 'start', behavior: 'instant' });
+    const go = (instant) => {
+      const id = decodeURIComponent(window.location.hash.slice(1));
+      if (id && !id.startsWith('ref-')) scrollToSection(id, { updateHash: false, instant });
+    };
+    go(true);
+    const onHash = () => go(false);
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
   }, []);
 }
 
 export default function App() {
-  useInitialHashScroll();
+  useHashNavigation();
 
   return (
     <>
@@ -40,12 +43,11 @@ export default function App() {
       <Header />
       <main id="main" tabIndex={-1} className="outline-none">
         <HomeSection />
-        <DomainSection />
-        <MilestonesSection />
-        <DocumentsSection />
-        <PresentationsSection />
-        <AboutSection />
-        <ContactSection />
+        <ProSafeSection />
+        <MethodologySection />
+        <ResultsSection />
+        <ResourcesSection />
+        <AboutContactSection />
       </main>
       <Footer />
       <BackToTop />

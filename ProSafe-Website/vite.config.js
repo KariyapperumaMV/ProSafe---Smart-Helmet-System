@@ -26,7 +26,8 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     assetsInlineLimit: 0,
-    chunkSizeWarningLimit: 700,
+    // three.js is isolated in the lazily loaded 3D viewer chunk (~230 KB gzipped).
+    chunkSizeWarningLimit: 900,
   },
   test: {
     environment: 'jsdom',

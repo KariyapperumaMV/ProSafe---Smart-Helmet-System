@@ -26,6 +26,8 @@
   --ps-info: 59 130 246;        /* #3b82f6 blue helmet LED for UNCERTAIN */
   --ps-chart-highlight: 14 165 165; /* #0ea5a5 validated against the surface */
   --ps-chart-neutral: 86 98 107;    /* #56626b */
+  --ps-series-a: 14 165 165;        /* #0ea5a5 W_002 (validated vs #0d151c) */
+  --ps-series-b: 139 92 246;        /* #8b5cf6 W_003 */
 
   --header-h: 72px;
   color-scheme: dark;
@@ -194,6 +196,20 @@
   transform: none;
 }
 
+/* Architecture data-flow connectors: a dashed track with moving highlights. */
+.flow-line {
+  background: repeating-linear-gradient(90deg, rgb(var(--ps-green) / 0.75) 0 6px, transparent 6px 12px);
+  background-size: 24px 100%;
+  animation: flow-x 1.2s linear infinite;
+}
+.flow-line.flow-vertical {
+  background: repeating-linear-gradient(180deg, rgb(var(--ps-green) / 0.75) 0 6px, transparent 6px 12px);
+  background-size: 100% 24px;
+  animation-name: flow-y;
+}
+@keyframes flow-x { to { background-position: 24px 0; } }
+@keyframes flow-y { to { background-position: 0 24px; } }
+
 @keyframes pulse-ring {
   0% { box-shadow: 0 0 0 0 rgb(var(--ps-green) / 0.45); }
   70% { box-shadow: 0 0 0 10px rgb(var(--ps-green) / 0); }
@@ -219,3 +235,9 @@
   .reveal-ready .reveal { opacity: 1 !important; transform: none !important; }
   header, .fixed { position: static !important; }
 }
+
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Horizontal scrollers must contain their absolutely positioned children
+   (e.g. sr-only labels), otherwise those escape the clip and widen the page. */
+.overflow-x-auto { position: relative; }

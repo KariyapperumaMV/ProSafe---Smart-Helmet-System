@@ -21,27 +21,78 @@ export const site = {
   repositoryUrl: 'https://github.com/KariyapperumaMV/ProSafe---Smart-Helmet-System',
 };
 
+/**
+ * Top-level navigation. `children` become dropdown entries on desktop and
+ * indented links on mobile. Resource children select a tab in the
+ * Resources section (see `resourceTabs` below).
+ */
 export const navItems = [
   { id: 'home', label: 'Home' },
   {
-    id: 'domain',
-    label: 'Domain',
+    id: 'prosafe',
+    label: 'ProSafe',
     children: [
-      { id: 'literature-survey', label: 'Literature Survey' },
+      { id: 'problem', label: 'The Problem' },
       { id: 'research-gap', label: 'Research Gap' },
-      { id: 'research-problem', label: 'Research Problem' },
-      { id: 'research-objectives', label: 'Research Objectives' },
-      { id: 'methodology', label: 'Methodology' },
-      { id: 'technologies', label: 'Technologies Used' },
-      { id: 'findings', label: 'Evaluation & Findings' },
+      { id: 'research-objectives', label: 'Objectives' },
+      { id: 'helmet', label: '3D Smart Helmet' },
     ],
   },
-  { id: 'milestones', label: 'Milestones' },
-  { id: 'documents', label: 'Documents' },
-  { id: 'presentations', label: 'Presentations' },
-  { id: 'about', label: 'About Us' },
-  { id: 'contact', label: 'Contact Us' },
+  {
+    id: 'methodology',
+    label: 'Methodology',
+    children: [
+      { id: 'research-process', label: 'Research Process' },
+      { id: 'architecture', label: 'System Architecture' },
+      { id: 'platform', label: 'Web Application' },
+      { id: 'ml-pipeline', label: 'ML Pipeline' },
+      { id: 'technologies', label: 'Technologies' },
+      { id: 'in-action', label: 'Videos' },
+    ],
+  },
+  {
+    id: 'results',
+    label: 'Results',
+    children: [
+      { id: 'ml-results', label: 'ML Results' },
+      { id: 'lab-results', label: 'Laboratory Tests' },
+      { id: 'testing-results', label: 'Software Testing' },
+      { id: 'user-results', label: 'User Acceptance' },
+      { id: 'findings', label: 'Findings & Limitations' },
+    ],
+  },
+  {
+    id: 'resources',
+    label: 'Resources',
+    children: [
+      { id: 'milestones', label: 'Milestones' },
+      { id: 'documents', label: 'Documents' },
+      { id: 'presentations', label: 'Presentations' },
+    ],
+  },
+  { id: 'about', label: 'About & Contact' },
 ];
+
+/** Ids that select a Resources tab rather than an element on the page. */
+export const resourceTabs = ['milestones', 'documents', 'presentations'];
+
+/**
+ * Anchors used by the previous version of the site, mapped to their new
+ * location so links that were already shared keep working.
+ */
+export const legacyAnchors = {
+  domain: 'prosafe',
+  'literature-survey': 'prosafe',
+  'research-problem': 'problem',
+  'methodology-process': 'research-process',
+  'methodology-architecture': 'architecture',
+  'methodology-hardware': 'helmet',
+  'methodology-data': 'ml-pipeline',
+  'methodology-ml': 'ml-pipeline',
+  'methodology-realtime': 'ml-pipeline',
+  'methodology-tabs': 'methodology',
+  overview: 'home',
+};
 
 export const researcher = {
   name: 'Methya Vosadi Kariyapperuma',

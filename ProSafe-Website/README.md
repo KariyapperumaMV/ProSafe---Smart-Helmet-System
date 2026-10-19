@@ -3,9 +3,16 @@
 Academic research website for **ProSafe: Machine Learning-Based Smart Helmet for Personalized Construction Monitoring**
 (SLIIT IT4010 Research Project, project ID **R26-SE-042**, researcher Methya Vosadi Kariyapperuma, IT21200892).
 
-The site is a static React application that follows the SLIIT research website structure:
-**Home, Domain** (literature survey, research gap, research problem, objectives, methodology, technologies, evaluation and findings),
-**Milestones, Documents, Presentations, About Us and Contact Us**.
+The site is a static React application that presents the research as a short, interactive story
+(content source: thesis V4, `V4-Thesis_Draft-IT21200892.docx`):
+
+**Home → ProSafe** (problem, research gap, objectives, interactive 3D helmet) **→ Methodology** (research process,
+architecture, ML pipeline, technologies) **→ Results** (ML, laboratory, testing, user acceptance, findings)
+**→ Resources** (Milestones, Documents, Presentations) **→ About & Contact**.
+
+All SLIIT-required sections (Home, Domain, Milestones, Documents, Presentations, About Us, Contact Us) remain available;
+the Domain material is summarised in ProSafe and Methodology, and links used by the previous version of the site
+(`#domain`, `#documents`, `#methodology-hardware`, ...) redirect to their new location.
 
 It is completely independent of the ProSafe monitoring system: it has no backend, database, authentication or live sensor data,
 and it does not call the ProSafe API.
@@ -17,6 +24,7 @@ and it does not call the ProSafe API.
 | UI | React 18, JavaScript |
 | Build | Vite 5 (static output in `dist/`) |
 | Styling | Tailwind CSS 3 with the ProSafe design tokens (`src/styles/index.css`) |
+| 3D | three.js, React Three Fiber, Drei (lazy-loaded only for the helmet viewer) |
 | Icons | lucide-react, simple-icons (technology logos) |
 | Font | Segoe UI (as in the ProSafe app), with self-hosted Inter as the fallback |
 | Tests | Vitest, React Testing Library, jsdom |
@@ -29,17 +37,18 @@ ProSafe-Website/
 ├── public/
 │   ├── documents/        Research documents (PDF) linked from the Documents section
 │   ├── presentations/    Slide decks (PDF) linked from the Presentations section
-│   ├── images/           Logo, helmet prototype photos, wiring diagram, dashboard screenshots
+│   ├── images/           Logo, helmet prototype photos, worker illustration
+│   ├── screenshots/      Web application screenshots (gallery)
+│   ├── videos/           Project videos (MP4) and poster images
 │   ├── 404.html          Page shown by Netlify for unknown paths
 │   ├── favicon.ico, favicon-32.png, apple-touch-icon.png, og-image.png
 ├── src/
 │   ├── data/             ALL editable content (see "Updating content")
 │   ├── components/
-│   │   ├── layout/       Header (sticky nav, Domain dropdown, mobile menu), Footer, BackToTop
-│   │   ├── ui/           Section, Reveal, Tabs, Figure, FileCard, Cite, Icon, BrandIcon
-│   │   └── diagrams/     Research process, architecture, ML pipeline, results chart
-│   ├── sections/         Home, Domain (+ Methodology tabs), Milestones, Documents,
-│   │                     Presentations, About, Contact
+│   │   ├── layout/       Header (sticky nav, dropdowns, mobile menu), Footer, BackToTop
+│   │   ├── ui/           Section, Reveal, Figure, FileCard, Cite, Icon, BrandIcon
+│   │   └── helmet/       Interactive 3D helmet (procedural model, viewer, showcase + fallback)
+│   ├── sections/         Home, ProSafe, Methodology, Results, Resources, About (+ Contact form)
 │   ├── hooks/, lib/      Active-section tracking, navigation and formatting helpers
 │   ├── styles/index.css  Design tokens and shared component classes
 │   ├── test/             Test setup and data-integrity tests
@@ -78,7 +87,9 @@ The tests check, among other things, that every "available" document points to a
 that unavailable items have no links, that every citation exists, and that the published ML metrics match
 `../ProSafe-ML-V2/outputs/final_experiment_summary.csv` (skipped automatically if that file is not present).
 
-The production build is about 9.5 MB including all PDFs, which is within the 20 MB limit stated in the SLIIT website guidelines.
+The production build is about 24 MB: roughly 10 MB of site and PDFs plus the 14 MB UI/UX video. This is above the 20 MB limit
+stated in the SLIIT website guidelines. To stay under it, host the video on YouTube (unlisted) and set `youtubeId` instead of `src`
+(see "Screenshots, videos and the worker visual").
 
 ## 3. Deploying with Netlify Drop (no Git)
 
@@ -132,12 +143,14 @@ All text and links live in `src/data/`. You rarely need to touch components.
 
 | File | What it controls |
 | --- | --- |
-| `site.js` | Researcher, supervisors, contact details (email, LinkedIn, photo), navigation |
-| `home.js` | Hero text, key facts, features and workflow |
-| `domain.js` | Literature survey, research gap, problem, objectives |
-| `methodology.js` | Methodology tabs, architecture, hardware, data, ML pipeline, real-time monitoring |
+| `site.js` | Researcher, supervisors, contact details (email, LinkedIn, photo), navigation, legacy anchors |
+| `home.js` | Hero text, highlights, sensors, LED states |
+| `prosafe.js` | Problem, research gaps, contribution, research question, objectives |
+| `helmet.js` | 3D helmet components: numbered markers, approximate positions and descriptions |
+| `methodology.js` | Research process, architecture, ML pipeline stages |
 | `technologies.js` | Technology groups |
-| `findings.js` | Experiment results, key findings, evaluation status, limitations, future work |
+| `showcase.js` | Web application screenshots and project videos (sources, posters, captions) |
+| `results.js` | ML, laboratory, testing and user acceptance results, findings, limitations, conclusion |
 | `milestones.js` | Assessment dates, marks and status |
 | `documents.js` | Documents and presentations |
 | `references.js` | Reference list |
@@ -147,7 +160,8 @@ Common updates:
 - **Contact email:** set `contact.email` in `site.js`. Mailto links and the "Open in email app" button appear automatically.
 - **Researcher photo:** add an image to `public/images/` (e.g. `researcher.webp`) and set `researcher.photo: '/images/researcher.webp'`.
 - **Milestone dates and marks:** edit `date`, `marks` (e.g. `'6%'`) and `status` (`'completed' | 'in-progress' | 'upcoming'`) in `milestones.js`.
-- **Results:** when thesis Chapter 3 is final, update `findings.js`. Set `showExperimentResults = false` to hide the numeric results.
+- **Results:** all figures in `results.js` come from thesis V4 Chapter 3 and Appendices F and G. The tests cross-check the XGBoost rows
+  against `ProSafe-ML-V2/outputs` (skipped if those files are absent).
 
 ### Adding a document or presentation later
 
@@ -176,3 +190,35 @@ Do not publish raw datasets, credentials or personal worker information.
 - Dashboard screenshots are taken from the implemented application; worker names are blurred.
 - The site respects `prefers-reduced-motion`, supports keyboard navigation (skip link, accessible dropdown, tabs and menu),
   and uses `#section` links so refreshes and direct links work without any server rewrites.
+
+## The 3D helmet
+
+- It is a **procedural, conceptual 3D reconstruction** built from three.js geometry (lathe shell, brim, ridge, harness and
+  primitive sensor modules). No GLB/GLTF model, Blender file or CAD data exists for the prototype, so component positions
+  follow the photographs in thesis Figure 2.4 only approximately; the ESP32 is not visible in any photograph, so its placement
+  is illustrative. The page labels it accordingly.
+- The viewer is code-split (`Helmet3DViewer` chunk, ~230 KB gzipped) and only loads when the section approaches the viewport.
+  It renders on demand (no continuous rendering when idle or off-screen), and falls back to the prototype photographs and the
+  accessible component list if WebGL is unavailable or the context is lost.
+- To replace it with a measured model later: export an optimised `.glb` (Draco/meshopt compressed) into `public/models/`,
+  load it in `src/components/helmet/HelmetModel.jsx` with Drei's `useGLTF`, and adjust the marker positions in `src/data/helmet.js`.
+
+## Screenshots, videos and the worker visual
+
+- **Screenshots** (`public/screenshots/`, listed in `src/data/showcase.js`): genuine ProSafe screens. The dashboards come from the
+  thesis (worker names blurred); analytics and helmet management are frames from the UI/UX video with the browser and taskbar
+  cropped. Keep any new screenshot free of personal data and export it as WebP (~1900 px wide).
+- **Videos** (`src/data/showcase.js` → `videos`): each entry takes either `src` (an H.264 MP4 in `public/videos/`) or
+  `youtubeId` (an unlisted YouTube video, embedded through youtube-nocookie only after the visitor presses Play).
+  Nothing is downloaded until Play is pressed.
+  - `prosafe-uiux` → `public/videos/prosafe-uiux.mp4` (re-encoded from `PP2/UI UX video.mp4`, 1080p30, 14 MB) and
+    `public/videos/prosafe-uiux-poster.webp`.
+  - `prosafe-demonstration` → not yet available. Add `public/videos/prosafe-demonstration.mp4` and a 1280×720 poster
+    `public/videos/prosafe-demonstration-poster.webp`, then set `src`, `poster`, `duration`, `size` and an accurate `description`.
+  - To compress a recording: `ffmpeg -i input.mp4 -vf fps=30 -c:v libx264 -preset slow -crf 30 -c:a aac -b:a 96k -movflags +faststart output.mp4`.
+  - Large videos are better hosted on YouTube (unlisted) and referenced with `youtubeId`; this keeps the site small
+    (the build is ~24 MB with the UI/UX video, above the 20 MB course-web limit but fine for Netlify).
+- **Worker visual** (`src/data/home.js` → `workerVisual`): currently a labelled conceptual SVG illustration
+  (`public/images/prosafe-worker-concept.svg`). To use a real photograph of the prototype being worn, add
+  `public/images/prosafe-worker.webp` (about 1200×900, 4:3) and set `src` to it and `kind: 'photo'`; the caption updates automatically.
+

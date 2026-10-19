@@ -6,7 +6,7 @@ export function Section({ id, children, className = '', tinted = false, labelled
     <section
       id={id}
       aria-labelledby={labelledBy}
-      className={`relative -scroll-mt-12 py-20 outline-none sm:py-24 ${tinted ? 'bg-surface/40' : ''} ${className}`}
+      className={`relative -scroll-mt-12 py-16 outline-none sm:py-20 ${tinted ? 'bg-surface/40' : ''} ${className}`}
     >
       {tinted && <div className="divider absolute inset-x-0 top-0" aria-hidden="true" />}
       <div className="container-page">{children}</div>
@@ -32,9 +32,9 @@ export function SectionHeader({ id, eyebrow, title, lead, align = 'left', level 
 /** Subsection within the Domain section, addressable from the navigation. */
 export function SubSection({ id, eyebrow, title, lead, children, className = '' }) {
   return (
-    <div id={id} className={`mt-20 outline-none first:mt-12 ${className}`} tabIndex={-1}>
+    <div id={id} className={`mt-16 outline-none ${className}`} tabIndex={-1}>
       <SectionHeader id={`${id}-title`} eyebrow={eyebrow} title={title} lead={lead} level={3} />
-      <div className="mt-10">{children}</div>
+      <div className="mt-8">{children}</div>
     </div>
   );
 }

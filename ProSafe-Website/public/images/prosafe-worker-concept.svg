@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 720" role="img" aria-labelledby="t d">
+  <title id="t">Conceptual illustration of a construction worker wearing the ProSafe smart helmet</title>
+  <desc id="d">A construction worker in a high-visibility vest wears a white hard hat modelled on the ProSafe prototype, with a green status LED at the front, a red emergency button and a blue gas sensor module on the side band and a small UV sensor board on top, in front of a building under construction and a tower crane at dusk.</desc>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#071017"/>
+      <stop offset="0.55" stop-color="#0c1d22"/>
+      <stop offset="1" stop-color="#173029"/>
+    </linearGradient>
+    <radialGradient id="dusk" cx="0.78" cy="0.82" r="0.55">
+      <stop offset="0" stop-color="#f59e0b" stop-opacity="0.32"/>
+      <stop offset="0.45" stop-color="#22c55e" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="halo" cx="0.47" cy="0.42" r="0.42">
+      <stop offset="0" stop-color="#22c55e" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#22c55e" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="shell" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.6" stop-color="#e9eeec"/>
+      <stop offset="1" stop-color="#b9c4c1"/>
+    </linearGradient>
+    <linearGradient id="brim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f4f6f5"/>
+      <stop offset="1" stop-color="#aeb9b6"/>
+    </linearGradient>
+    <linearGradient id="skin" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#8d5a3b"/>
+      <stop offset="1" stop-color="#b98058"/>
+    </linearGradient>
+    <linearGradient id="vest" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#dff04c"/>
+      <stop offset="1" stop-color="#a9c22a"/>
+    </linearGradient>
+    <linearGradient id="shirt" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#16212a"/>
+      <stop offset="1" stop-color="#26333d"/>
+    </linearGradient>
+    <filter id="glow" x="-200%" y="-200%" width="500%" height="500%">
+      <feGaussianBlur stdDeviation="7"/>
+    </filter>
+    <clipPath id="vestClip">
+      <path d="M310 570 C332 534 366 515 401 507 L420 720 L300 720 Z"/>
+      <path d="M470 507 C526 516 572 548 594 602 L606 720 L468 720 Z"/>
+    </clipPath>
+  </defs>
+
+  <!-- Sky and light -->
+  <rect width="960" height="720" fill="url(#sky)"/>
+  <rect width="960" height="720" fill="url(#dusk)"/>
+
+  <!-- Building frame under construction (left) -->
+  <g stroke="#23404a" stroke-width="3" fill="none" opacity="0.9">
+    <path d="M40 640 V330 H250 V640"/>
+    <path d="M40 390 H250 M40 450 H250 M40 510 H250 M40 570 H250"/>
+    <path d="M110 330 V640 M180 330 V640"/>
+  </g>
+  <rect x="40" y="330" width="210" height="10" fill="#1c3640"/>
+
+  <!-- Scaffolded building (right) -->
+  <g fill="#10232a">
+    <rect x="640" y="250" width="290" height="390"/>
+  </g>
+  <g stroke="#2b4b55" stroke-width="2.5" fill="none">
+    <path d="M640 250 V640 M712 250 V640 M784 250 V640 M856 250 V640 M928 250 V640"/>
+    <path d="M640 310 H930 M640 380 H930 M640 450 H930 M640 520 H930 M640 590 H930"/>
+    <path d="M640 310 L712 380 M712 380 L784 310 M784 450 L856 520 M856 520 L928 450 M640 520 L712 590"/>
+  </g>
+  <g fill="#1a3a33" opacity="0.8">
+    <rect x="660" y="330" width="34" height="30"/>
+    <rect x="806" y="400" width="34" height="30"/>
+    <rect x="732" y="470" width="34" height="30"/>
+  </g>
+
+  <!-- Tower crane -->
+  <g stroke="#2f525c" stroke-width="3" fill="none">
+    <path d="M790 640 V120 M812 640 V120"/>
+    <path d="M790 600 L812 560 L790 520 L812 480 L790 440 L812 400 L790 360 L812 320 L790 280 L812 240 L790 200 L812 160 L790 120"/>
+    <path d="M560 128 H950 M560 146 H950"/>
+    <path d="M560 146 L590 128 L620 146 L650 128 L680 146 L710 128 L740 146 L770 128 L800 146 L830 128 L860 146 L890 128 L920 146 L950 128"/>
+    <path d="M801 120 L801 86 L560 128 M801 86 L950 128"/>
+  </g>
+  <rect x="880" y="146" width="44" height="26" fill="#284650"/>
+  <path d="M640 146 V318" stroke="#3a5f69" stroke-width="2"/>
+  <path d="M632 318 h16 v8 a8 8 0 0 1 -16 0 z" fill="#3a5f69"/>
+
+  <!-- Ground slab with rebar -->
+  <rect y="640" width="960" height="80" fill="#0a1519"/>
+  <g stroke="#1d3238" stroke-width="2">
+    <path d="M0 660 H960 M0 690 H960"/>
+  </g>
+
+  <!-- Soft halo behind the worker -->
+  <ellipse cx="450" cy="380" rx="330" ry="300" fill="url(#halo)"/>
+
+  <!-- Wireless link arcs from the helmet -->
+  <g fill="none" stroke="#22c55e" stroke-linecap="round" opacity="0.85">
+    <path d="M556 196 a34 34 0 0 1 34 34" stroke-width="7"/>
+    <path d="M556 172 a58 58 0 0 1 58 58" stroke-width="7" opacity="0.7"/>
+    <path d="M556 148 a82 82 0 0 1 82 82" stroke-width="7" opacity="0.45"/>
+  </g>
+
+  <!-- Torso: shirt, collar and vest -->
+  <path d="M250 720 C262 602 318 524 400 502 L470 502 C556 512 620 586 640 720 Z" fill="url(#shirt)"/>
+  <path d="M310 570 C332 534 366 515 401 507 L420 720 L300 720 Z" fill="url(#vest)"/>
+  <path d="M470 507 C526 516 572 548 594 602 L606 720 L468 720 Z" fill="url(#vest)"/>
+  <g clip-path="url(#vestClip)" fill="#eef4f2" opacity="0.88">
+    <rect x="270" y="612" width="380" height="18"/>
+    <rect x="270" y="664" width="380" height="18"/>
+  </g>
+  <path d="M398 504 L434 566 L472 504" fill="none" stroke="#0d151c" stroke-width="6" stroke-linejoin="round"/>
+  <!-- Green rim light on the right shoulder -->
+  <path d="M470 502 C556 512 620 586 640 720" fill="none" stroke="#22c55e" stroke-opacity="0.35" stroke-width="4"/>
+
+  <!-- Neck -->
+  <path d="M396 418 L470 418 L476 510 C452 520 418 520 392 510 Z" fill="#87553a"/>
+
+  <!-- Head -->
+  <ellipse cx="432" cy="362" rx="70" ry="84" fill="url(#skin)"/>
+  <ellipse cx="372" cy="368" rx="13" ry="21" fill="#8a5739"/>
+  <path d="M372 356 q6 12 0 24" fill="none" stroke="#6e4329" stroke-width="3" stroke-linecap="round"/>
+  <!-- Hair at the back under the helmet -->
+  <path d="M362 326 C358 360 366 392 384 404 L392 330 Z" fill="#1b1410"/>
+  <!-- Face (profile facing right) -->
+  <path d="M493 344 C512 372 513 386 497 394 Z" fill="#b98058"/>
+  <path d="M462 342 q14 -6 26 0" fill="none" stroke="#2a1a12" stroke-width="4" stroke-linecap="round"/>
+  <ellipse cx="476" cy="356" rx="5" ry="4" fill="#1a110c"/>
+  <path d="M476 416 q12 4 20 -2" fill="none" stroke="#6e3f2a" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M444 446 C470 448 492 432 500 410" fill="none" stroke="#7b4b31" stroke-width="3" opacity="0.6"/>
+
+  <!-- Chin strap -->
+  <path d="M384 322 C390 400 418 440 458 448 C482 452 500 436 506 420" fill="none" stroke="#222a30" stroke-width="6" stroke-linecap="round"/>
+
+  <!-- Helmet: dome, side band, ridge and brim -->
+  <path d="M328 318 C326 236 388 188 450 188 C520 188 562 236 564 314 Z" fill="url(#shell)"/>
+  <path d="M446 190 C500 192 542 226 554 300" fill="none" stroke="#ffffff" stroke-width="12" stroke-linecap="round"/>
+  <path d="M446 190 C500 192 542 226 554 300" fill="none" stroke="#c9d2cf" stroke-width="2" stroke-linecap="round" transform="translate(5 2)"/>
+  <rect x="326" y="296" width="242" height="26" rx="6" fill="#e1e7e4"/>
+  <path d="M296 322 Q440 338 604 314 Q620 320 606 332 Q452 354 300 336 Q288 330 296 322 Z" fill="url(#brim)"/>
+
+  <!-- Sensors on the helmet (positions approximate, after thesis Figure 2.4) -->
+  <!-- UV sensor board on top -->
+  <g transform="rotate(-12 412 200)">
+    <rect x="400" y="193" width="24" height="15" rx="2" fill="#6d28d9"/>
+    <rect x="408" y="197" width="7" height="6" fill="#e5e7eb"/>
+  </g>
+  <!-- Gas sensor module (MQ-2) on the side band -->
+  <rect x="438" y="299" width="40" height="20" rx="3" fill="#1e3a8a"/>
+  <circle cx="460" cy="309" r="8" fill="#cbd5e1"/>
+  <circle cx="460" cy="309" r="4" fill="#94a3b8"/>
+  <!-- Emergency button -->
+  <circle cx="362" cy="309" r="11" fill="#f3f4f6"/>
+  <circle cx="362" cy="309" r="8" fill="#dc2626"/>
+  <!-- Status LED at the front -->
+  <circle cx="552" cy="266" r="16" fill="#22c55e" filter="url(#glow)" opacity="0.9"/>
+  <circle cx="552" cy="266" r="6.5" fill="#bbf7d0"/>
+  <circle cx="552" cy="266" r="4" fill="#4ade80"/>
+</svg>

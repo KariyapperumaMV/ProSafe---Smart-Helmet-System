@@ -2,6 +2,20 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "appendixE-demo-backend",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["C:/Users/MSII/AppData/Local/Temp/claude/E--Github-clone-ProSafe---Smart-Helmet-System/b3dfc01a-4ea6-403d-8863-f44a6bd4f8bb/scratchpad/demo/run-backend.js"],
+      "cwd": "ProSafe-Web/backend",
+      "port": 5055
+    },
+    {
+      "name": "appendixE-demo-frontend",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["C:/Users/MSII/AppData/Local/Temp/claude/E--Github-clone-ProSafe---Smart-Helmet-System/b3dfc01a-4ea6-403d-8863-f44a6bd4f8bb/scratchpad/demo/run-frontend.js"],
+      "cwd": "ProSafe-Web/frontend",
+      "port": 5173
+    },
+    {
       "name": "backend",
       "runtimeExecutable": "node",
       "runtimeArgs": ["server.js"],

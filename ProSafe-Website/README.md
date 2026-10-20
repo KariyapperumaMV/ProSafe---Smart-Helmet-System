@@ -3,19 +3,34 @@
 Academic research website for **ProSafe: Machine Learning-Based Smart Helmet for Personalized Construction Monitoring**
 (SLIIT IT4010 Research Project, project ID **R26-SE-042**, researcher Methya Vosadi Kariyapperuma, IT21200892).
 
-The site is a static React application that presents the research as a short, interactive story
-(content source: thesis V4, `V4-Thesis_Draft-IT21200892.docx`):
+**Live site:** https://prosafe-research.netlify.app/
 
-**Home → ProSafe** (problem, research gap, objectives, interactive 3D helmet) **→ Methodology** (research process,
-architecture, ML pipeline, technologies) **→ Results** (ML, laboratory, testing, user acceptance, findings)
-**→ Resources** (Milestones, Documents, Presentations) **→ About & Contact**.
+The website presents the final-year research to supervisors, evaluators, researchers and interested visitors. It is a
+static React application that tells the research as a short, interactive story (content source: thesis V4,
+`V4-Thesis_Draft-IT21200892.docx`).
+
+It is **separate from the operational ProSafe monitoring application** ([`ProSafe-Web`](../ProSafe-Web/frontend/README.md)):
+it has no backend, database, authentication or live sensor data, and it does not call the ProSafe API. For the
+complete system see the [project README](../README.md).
+
+## Website features
+
+| Section (anchor) | Content |
+| --- | --- |
+| **Home** (`#home`) | Title, introduction, links to ProSafe and Results, a labelled conceptual illustration of a worker wearing the helmet, four key figures |
+| **ProSafe** (`#prosafe`) | The problem (`#problem`), research gap (`#research-gap`), research question and objectives (`#research-objectives`), **interactive 3D helmet** with numbered component hotspots (`#helmet`), references (`#references`) |
+| **Methodology** (`#methodology`) | Research process (`#research-process`), system architecture (`#architecture`), **web application screenshot gallery** (`#platform`), ML pipeline (`#ml-pipeline`), technologies (`#technologies`), **project videos** (`#in-action`) |
+| **Results** (`#results`) | ML results with the W_002 vs W_003 comparison and all eight configurations (`#ml-results`), laboratory tests (`#lab-results`), software testing (`#testing-results`), user acceptance (`#user-results`), findings and limitations (`#findings`) |
+| **Resources** (`#resources`) | Tabs for Milestones, Documents and Presentations (`#milestones`, `#documents`, `#presentations` select the tab) |
+| **About & Contact** (`#about`, `#contact`) | Researcher and supervisors, contact form (Netlify Forms) |
+
+Media status: the **UI/UX walkthrough video** is included (`public/videos/prosafe-uiux.mp4`). The **system
+demonstration video** is not yet available: its card shows "Video to be added" and no player (see
+[Screenshots, videos and the worker visual](#screenshots-videos-and-the-worker-visual)).
 
 All SLIIT-required sections (Home, Domain, Milestones, Documents, Presentations, About Us, Contact Us) remain available;
 the Domain material is summarised in ProSafe and Methodology, and links used by the previous version of the site
 (`#domain`, `#documents`, `#methodology-hardware`, ...) redirect to their new location.
-
-It is completely independent of the ProSafe monitoring system: it has no backend, database, authentication or live sensor data,
-and it does not call the ProSafe API.
 
 ## Tech stack
 
@@ -144,7 +159,7 @@ All text and links live in `src/data/`. You rarely need to touch components.
 | File | What it controls |
 | --- | --- |
 | `site.js` | Researcher, supervisors, contact details (email, LinkedIn, photo), navigation, legacy anchors |
-| `home.js` | Hero text, highlights, sensors, LED states |
+| `home.js` | Hero text, highlights, worker visual, sensors, LED states |
 | `prosafe.js` | Problem, research gaps, contribution, research question, objectives |
 | `helmet.js` | 3D helmet components: numbered markers, approximate positions and descriptions |
 | `methodology.js` | Research process, architecture, ML pipeline stages |
@@ -221,4 +236,19 @@ Do not publish raw datasets, credentials or personal worker information.
 - **Worker visual** (`src/data/home.js` → `workerVisual`): currently a labelled conceptual SVG illustration
   (`public/images/prosafe-worker-concept.svg`). To use a real photograph of the prototype being worn, add
   `public/images/prosafe-worker.webp` (about 1200×900, 4:3) and set `src` to it and `kind: 'photo'`; the caption updates automatically.
+
+## Troubleshooting
+
+| Problem | Cause and fix |
+| --- | --- |
+| An image, PDF or video returns 404 | Files in `public/` are served from the site root: `public/videos/x.mp4` is referenced as `/videos/x.mp4`. Check the path in `src/data/*.js` and the file name's case (Netlify paths are case-sensitive). `npm test` fails for missing screenshots, videos, posters and PDFs |
+| A refreshed or shared link shows the wrong place | The site uses `#section` links only, so no Netlify redirect is needed. An unknown path (not a hash) shows `public/404.html` by design |
+| The 3D helmet shows photographs instead of the model | WebGL is unavailable or the context was lost, so the accessible fallback is shown. Try another browser or enable hardware acceleration |
+| The 3D helmet does not appear at all | It is lazy-loaded when the section approaches the viewport; check the browser console for a failed `Helmet3DViewer` chunk |
+| A video shows the error state | The MP4 is missing or not H.264/AAC. Use **Open video file** to test the URL directly, and re-encode with the ffmpeg command above |
+| "Video to be added" is shown | The entry has neither `src` nor `youtubeId` in `src/data/showcase.js` (expected for `prosafe-demonstration` until the recording is added) |
+| The contact form says it cannot send locally | Expected: submissions only work on the deployed Netlify site |
+| Contact submissions do not appear in Netlify | Form detection is disabled; enable it under *Forms* and redeploy (the form name must stay `contact`) |
+| Netlify build fails | Check that the base directory is `ProSafe-Website`, then run `npm ci && npm test && npm run build` locally with Node 20 or 22 to reproduce |
+| The build is larger than 20 MB | The UI/UX video accounts for 14 MB; host it on YouTube (unlisted) and set `youtubeId` |
 
